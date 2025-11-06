@@ -87,16 +87,25 @@ init_traffic_db() {
 need_reset() {
     local current_day=$(date +%d)
     local current_month=$(date +%Y-%m)
-    local reset_day=$(printf "%02d" ${TRAFFIC_RESET_DAY})
+    local reset_day=${TRAFFIC_RESET_DAY}
 
-    # Get last reset date from database
-    local last_reset=$(grep "RESET|" "${TRAFFIC_DATA_FILE}" 2>/dev/null | tail -1 | cut -d'|' -f2 || echo "")
+    # Get the number of days in current month
+    local days_in_month=$(date -d "${current_month}-01 +1 month -1 day" +%d)
 
-    # If reset day matches current day
-    if [ "${current_day}" == "${reset_day}" ]; then
+    # If reset day exceeds days in month, use last day of month
+    # Example: reset_day=31 in February (28/29 days) → use 28/29
+    local effective_reset_day=${reset_day}
+    if [ "${reset_day}" -gt "${days_in_month}" ] 2>/dev/null; then
+        effective_reset_day=${days_in_month}
+    fi
+
+    # Get last reset month from database
+    local last_reset=$(grep "RESET|" "${TRAFFIC_DATA_FILE}" 2>/dev/null | tail -1 | cut -d'|' -f4 || echo "")
+
+    # Check if current day matches effective reset day
+    if [ "${current_day}" == "${effective_reset_day}" ] 2>/dev/null; then
         # Check if we already reset this month
-        local current_reset_date="${current_month}-${reset_day}"
-        if [ "${last_reset}" != "${current_reset_date}" ]; then
+        if [ "${last_reset}" != "${current_month}" ]; then
             return 0  # Need reset
         fi
     fi
@@ -127,7 +136,13 @@ reset_traffic() {
 
 # Function to get baseline traffic (traffic at last measurement)
 get_baseline() {
-    local baseline=$(grep -v "^#" "${TRAFFIC_DATA_FILE}" | grep "baseline=" | tail -1 | sed 's/.*baseline=//' || echo "0")
+    local baseline=$(grep -v "^#" "${TRAFFIC_DATA_FILE}" 2>/dev/null | grep "baseline=" | tail -1 | sed 's/.*baseline=//' 2>/dev/null || echo "0")
+
+    # Validate that baseline is a valid number
+    if ! [[ "${baseline}" =~ ^[0-9]+$ ]]; then
+        baseline=0
+    fi
+
     echo "${baseline}"
 }
 
