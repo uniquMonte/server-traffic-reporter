@@ -159,7 +159,7 @@ calculate_percentage() {
 # Function to get progress bar
 get_progress_bar() {
     local percentage=$1
-    local bar_length=15
+    local bar_length=12
     local filled=$(awk "BEGIN {printf \"%d\", (${percentage}/100)*${bar_length}}")
     local empty=$((bar_length - filled))
 
@@ -225,7 +225,7 @@ send_daily_report() {
     message="${message}├ Used: ${cumulative_gb} GB\n"
     message="${message}├ Limit: ${limit_gb} GB\n"
     message="${message}└ Remaining: $(awk "BEGIN {printf \"%.2f\", ${limit_gb}-${cumulative_gb}}") GB\n\n"
-    message="${message}${progress_bar} ${percentage}% ${status_emoji}\n\n"
+    message="${message}${progress_bar} ${percentage}%\n\n"
     message="${message}🔄 *Cycle Info:*\n"
     message="${message}├ Reset Day: ${reset_day} of each month\n"
     message="${message}└ Days until reset: ${days_until_reset}\n\n"
