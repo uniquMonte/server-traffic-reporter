@@ -30,8 +30,26 @@ get_current_traffic() {
     local rx_bytes=$(cat /sys/class/net/${interface}/statistics/rx_bytes 2>/dev/null || echo 0)
     local tx_bytes=$(cat /sys/class/net/${interface}/statistics/tx_bytes 2>/dev/null || echo 0)
 
-    # Total bytes (received + transmitted)
-    local total_bytes=$((rx_bytes + tx_bytes))
+    # Calculate traffic based on direction setting
+    local total_bytes=0
+    case "${TRAFFIC_DIRECTION:-1}" in
+        1)
+            # Bidirectional (upload + download)
+            total_bytes=$((rx_bytes + tx_bytes))
+            ;;
+        2)
+            # Download only (received/inbound)
+            total_bytes=${rx_bytes}
+            ;;
+        3)
+            # Upload only (transmitted/outbound)
+            total_bytes=${tx_bytes}
+            ;;
+        *)
+            # Default to bidirectional
+            total_bytes=$((rx_bytes + tx_bytes))
+            ;;
+    esac
 
     echo "${total_bytes}"
 }
