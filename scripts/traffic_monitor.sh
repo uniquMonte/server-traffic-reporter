@@ -224,7 +224,7 @@ send_daily_report() {
     message="${message}📊 *Billing Cycle Stats:*\n"
     message="${message}├ Used: ${cumulative_gb} GB\n"
     message="${message}├ Limit: ${limit_gb} GB\n"
-    message="${message}└ Remaining: $(awk "BEGIN {printf \"%.2f\", ${limit_gb}-${cumulative_gb}}") GB\n\n"
+    message="${message}└ Remaining: $(awk "BEGIN {printf \"%.2f\", ${limit_gb}-${cumulative_gb}}") GB\n"
     message="${message}${progress_bar} ${percentage}%\n\n"
     message="${message}🔄 *Cycle Info:*\n"
     message="${message}├ Reset Day: ${reset_day} of each month\n"
