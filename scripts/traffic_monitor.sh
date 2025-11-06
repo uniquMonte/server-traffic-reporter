@@ -40,11 +40,11 @@ get_current_traffic() {
 bytes_to_human() {
     local bytes=$1
 
-    if [ ${bytes} -lt 1024 ]; then
+    if [ "${bytes}" -lt 1024 ] 2>/dev/null; then
         echo "${bytes} B"
-    elif [ ${bytes} -lt 1048576 ]; then
+    elif [ "${bytes}" -lt 1048576 ] 2>/dev/null; then
         echo "$(awk "BEGIN {printf \"%.2f\", ${bytes}/1024}") KB"
-    elif [ ${bytes} -lt 1073741824 ]; then
+    elif [ "${bytes}" -lt 1073741824 ] 2>/dev/null; then
         echo "$(awk "BEGIN {printf \"%.2f\", ${bytes}/1048576}") MB"
     else
         echo "$(awk "BEGIN {printf \"%.2f\", ${bytes}/1073741824}") GB"
@@ -120,7 +120,7 @@ get_cumulative_traffic() {
 
     # If current is less than baseline, interface was reset (server reboot)
     # In this case, get the last known cumulative and add current
-    if [ ${current} -lt ${baseline} ]; then
+    if [ "${current}" -lt "${baseline}" ] 2>/dev/null; then
         local last_cumulative=$(grep -v "^#" "${TRAFFIC_DATA_FILE}" | grep -v "RESET" | tail -1 | cut -d'|' -f3 || echo "0")
         local cumulative=$((last_cumulative + current))
     else
@@ -140,7 +140,7 @@ get_daily_traffic() {
     local daily=$((current_cumulative - yesterday_cumulative))
 
     # If daily is negative, it means it's the first entry or a reset happened
-    if [ ${daily} -lt 0 ]; then
+    if [ "${daily}" -lt 0 ] 2>/dev/null; then
         daily=${current_cumulative}
     fi
 
@@ -199,7 +199,7 @@ send_daily_report() {
     local days_in_month=$(date -d "${current_month}-01 +1 month -1 day" +%d)
     local days_until_reset=0
 
-    if [ ${current_day} -lt ${TRAFFIC_RESET_DAY} ]; then
+    if [ "${current_day}" -lt "${TRAFFIC_RESET_DAY}" ] 2>/dev/null; then
         days_until_reset=$((TRAFFIC_RESET_DAY - current_day))
     else
         local next_month=$(date -d "${current_month}-01 +1 month" +%Y-%m)
