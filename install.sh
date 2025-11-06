@@ -126,14 +126,16 @@ determine_install_dir() {
     fi
 
     echo ""
-    print_info "Default installation directory: ${default_dir}"
-    read -p "Press Enter to use default, or enter custom path: " custom_dir < /dev/tty
+    print_info "Installation directory [${default_dir}]"
+    read -p "Press Enter for default, or enter custom path: " custom_dir < /dev/tty
 
     if [ -n "${custom_dir}" ]; then
         INSTALL_DIR="${custom_dir}"
     else
         INSTALL_DIR="${default_dir}"
     fi
+
+    print_info "Installing to: ${INSTALL_DIR}"
 
     # Check if directory already exists
     if [ -d "${INSTALL_DIR}" ]; then
@@ -305,7 +307,10 @@ main() {
     show_next_steps
 
     # Ask if user wants to run setup now
-    read -p "Would you like to run the setup now? (y/n): " run_setup < /dev/tty
+    read -p "Would you like to run the setup now? (Y/n, press Enter for yes): " run_setup < /dev/tty
+
+    # Default to yes if empty
+    run_setup=${run_setup:-y}
 
     if [[ "${run_setup}" =~ ^[Yy]$ ]]; then
         echo ""
@@ -313,6 +318,10 @@ main() {
         sleep 2
         cd "${INSTALL_DIR}"
         exec ./setup.sh
+    else
+        echo ""
+        print_info "You can run the setup later with: vps-traffic-reporter"
+        echo ""
     fi
 }
 
