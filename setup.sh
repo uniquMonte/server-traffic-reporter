@@ -60,6 +60,14 @@ view_configuration() {
     echo ""
 
     if load_config; then
+        # Determine traffic mode name
+        local traffic_mode="Bidirectional"
+        case "${TRAFFIC_DIRECTION:-1}" in
+            1) traffic_mode="Bidirectional (both directions)" ;;
+            2) traffic_mode="Outbound only (server to client)" ;;
+            3) traffic_mode="Inbound only (client to server)" ;;
+        esac
+
         echo "Server Name: ${SERVER_NAME:-Not set}"
         echo "Telegram Bot Token: ${TELEGRAM_BOT_TOKEN:0:10}...${TELEGRAM_BOT_TOKEN: -5}"
         echo "Telegram Chat ID: ${TELEGRAM_CHAT_ID:-Not set}"
@@ -67,6 +75,7 @@ view_configuration() {
         echo "Monthly Traffic Limit: ${MONTHLY_TRAFFIC_LIMIT:-Not set} GB"
         echo "Report Time: ${REPORT_TIME:-Not set} (HH:MM format)"
         echo "Network Interface: ${NETWORK_INTERFACE:-Not set}"
+        echo "Traffic Mode: ${traffic_mode}"
         echo ""
 
         if [ -n "${CRON_INSTALLED}" ] && [ "${CRON_INSTALLED}" == "yes" ]; then
@@ -136,6 +145,21 @@ update_configuration() {
     read -p "Enter network interface [${NETWORK_INTERFACE:-${default_interface}}]: " input < /dev/tty
     NETWORK_INTERFACE="${input:-${NETWORK_INTERFACE:-${default_interface}}}"
 
+    # Traffic Direction
+    echo ""
+    print_info "Traffic counting mode:"
+    echo "  1) Bidirectional (both directions, RECOMMENDED)"
+    echo "  2) Outbound only (server to client, download)"
+    echo "  3) Inbound only (client to server, upload)"
+    read -p "Select traffic mode (1/2/3) [1]: " input < /dev/tty
+    TRAFFIC_DIRECTION="${input:-${TRAFFIC_DIRECTION:-1}}"
+
+    # Validate traffic direction
+    if [[ ! "${TRAFFIC_DIRECTION}" =~ ^[123]$ ]]; then
+        print_warning "Invalid selection, using default (bidirectional)"
+        TRAFFIC_DIRECTION=1
+    fi
+
     # Save configuration
     cat > "${CONFIG_FILE}" << EOF
 # VPS Traffic Reporter Configuration
@@ -148,6 +172,7 @@ TRAFFIC_RESET_DAY=${TRAFFIC_RESET_DAY}
 MONTHLY_TRAFFIC_LIMIT=${MONTHLY_TRAFFIC_LIMIT}
 REPORT_TIME="${REPORT_TIME}"
 NETWORK_INTERFACE="${NETWORK_INTERFACE}"
+TRAFFIC_DIRECTION=${TRAFFIC_DIRECTION}
 CRON_INSTALLED="no"
 EOF
 
