@@ -218,8 +218,8 @@ send_daily_report() {
     fi
 
     # Build message
-    local message="📊 *Daily Traffic Report - ${SERVER_NAME}*\n\n"
-    message="${message}📅 *Date:* $(date +%Y-%m-%d)\n\n"
+    local message="📊 *Daily Traffic Report - ${SERVER_NAME}*\n"
+    message="${message}📅 *Date:* $(date +%Y-%m-%d)\n"
     message="${message}📈 *Today's Usage:* ${daily_gb} GB\n\n"
     message="${message}📊 *Billing Cycle Stats:*\n"
     message="${message}├ Used: ${cumulative_gb} GB\n"
@@ -228,7 +228,7 @@ send_daily_report() {
     message="${message}${progress_bar} ${percentage}%\n\n"
     message="${message}🔄 *Cycle Info:*\n"
     message="${message}├ Reset Day: ${reset_day} of each month\n"
-    message="${message}└ Days until reset: ${days_until_reset}\n\n"
+    message="${message}└ Days until reset: ${days_until_reset}"
 
     # Add warning if usage is high
     if (( $(echo "${percentage} >= 90" | bc -l) )); then
