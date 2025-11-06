@@ -83,7 +83,7 @@ check_requirements() {
             echo "  Install: ${missing_deps[*]}"
         fi
         echo ""
-        read -p "Would you like to attempt automatic installation? (y/n): " auto_install
+        read -p "Would you like to attempt automatic installation? (y/n): " auto_install < /dev/tty
 
         if [[ "${auto_install}" =~ ^[Yy]$ ]]; then
             if command_exists apt-get; then
@@ -127,7 +127,7 @@ determine_install_dir() {
 
     echo ""
     print_info "Default installation directory: ${default_dir}"
-    read -p "Press Enter to use default, or enter custom path: " custom_dir
+    read -p "Press Enter to use default, or enter custom path: " custom_dir < /dev/tty
 
     if [ -n "${custom_dir}" ]; then
         INSTALL_DIR="${custom_dir}"
@@ -138,7 +138,7 @@ determine_install_dir() {
     # Check if directory already exists
     if [ -d "${INSTALL_DIR}" ]; then
         print_warning "Directory ${INSTALL_DIR} already exists!"
-        read -p "Do you want to remove it and reinstall? (y/n): " remove_existing
+        read -p "Do you want to remove it and reinstall? (y/n): " remove_existing < /dev/tty
 
         if [[ "${remove_existing}" =~ ^[Yy]$ ]]; then
             print_info "Removing existing installation..."
@@ -305,7 +305,7 @@ main() {
     show_next_steps
 
     # Ask if user wants to run setup now
-    read -p "Would you like to run the setup now? (y/n): " run_setup
+    read -p "Would you like to run the setup now? (y/n): " run_setup < /dev/tty
 
     if [[ "${run_setup}" =~ ^[Yy]$ ]]; then
         echo ""
