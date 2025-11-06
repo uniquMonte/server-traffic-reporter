@@ -99,13 +99,35 @@ need_reset() {
         effective_reset_day=${days_in_month}
     fi
 
-    # Get last reset month from database
-    local last_reset=$(grep "RESET|" "${TRAFFIC_DATA_FILE}" 2>/dev/null | tail -1 | cut -d'|' -f4 || echo "")
+    # Get last reset date and month from database
+    local last_reset_line=$(grep "RESET|" "${TRAFFIC_DATA_FILE}" 2>/dev/null | tail -1)
+    local last_reset_month=$(echo "${last_reset_line}" | cut -d'|' -f4 || echo "")
+    local last_reset_date=$(echo "${last_reset_line}" | cut -d'|' -f2 || echo "")
 
-    # Check if current day matches effective reset day
-    if [ "${current_day}" == "${effective_reset_day}" ] 2>/dev/null; then
-        # Check if we already reset this month
-        if [ "${last_reset}" != "${current_month}" ]; then
+    # If no reset record exists, we need to reset
+    if [ -z "${last_reset_month}" ]; then
+        return 0  # Need reset
+    fi
+
+    # Check if we already reset this month
+    if [ "${last_reset_month}" == "${current_month}" ]; then
+        return 1  # Already reset this month, no need to reset
+    fi
+
+    # Check if we have crossed the reset day in this month
+    # Compare: current_date >= reset_date_of_this_month
+    local reset_date_this_month="${current_month}-$(printf "%02d" ${effective_reset_day})"
+    local current_date=$(date +%Y-%m-%d)
+
+    # If current date >= reset date of this month, we need to reset
+    if [[ "${current_date}" > "${reset_date_this_month}" ]] || [[ "${current_date}" == "${reset_date_this_month}" ]]; then
+        return 0  # Need reset
+    fi
+
+    # Additional check: if last reset was in a previous month and we're past the reset day
+    # Handle year boundary (e.g., last reset was 2024-12, current is 2025-01)
+    if [ "${current_day}" -ge "${effective_reset_day}" ] 2>/dev/null; then
+        if [ "${last_reset_month}" != "${current_month}" ]; then
             return 0  # Need reset
         fi
     fi
@@ -150,16 +172,16 @@ get_baseline() {
 get_cumulative_traffic() {
     local baseline=$(get_baseline)
     local current=$(get_current_traffic "${NETWORK_INTERFACE}")
+    local last_cumulative=$(grep -v "^#" "${TRAFFIC_DATA_FILE}" | grep -v "RESET" | tail -1 | cut -d'|' -f3 || echo "0")
+    local cumulative=0
 
     # If current is less than baseline, interface was reset (server reboot)
     # In this case, get the last known cumulative and add current
     if [ "${current}" -lt "${baseline}" ] 2>/dev/null; then
-        local last_cumulative=$(grep -v "^#" "${TRAFFIC_DATA_FILE}" | grep -v "RESET" | tail -1 | cut -d'|' -f3 || echo "0")
-        local cumulative=$((last_cumulative + current))
+        cumulative=$((last_cumulative + current))
     else
-        local last_cumulative=$(grep -v "^#" "${TRAFFIC_DATA_FILE}" | grep -v "RESET" | tail -1 | cut -d'|' -f3 || echo "0")
         local diff=$((current - baseline))
-        local cumulative=$((last_cumulative + diff))
+        cumulative=$((last_cumulative + diff))
     fi
 
     echo "${cumulative}"
