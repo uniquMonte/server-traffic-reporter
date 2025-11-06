@@ -159,13 +159,13 @@ calculate_percentage() {
 # Function to get progress bar
 get_progress_bar() {
     local percentage=$1
-    local bar_length=10
+    local bar_length=15
     local filled=$(awk "BEGIN {printf \"%d\", (${percentage}/100)*${bar_length}}")
     local empty=$((bar_length - filled))
 
     local bar=""
     for ((i=0; i<filled; i++)); do
-        bar="${bar}█"
+        bar="${bar}▓"
     done
     for ((i=0; i<empty; i++)); do
         bar="${bar}░"
@@ -219,8 +219,7 @@ send_daily_report() {
 
     # Build message
     local message="📊 *Daily Traffic Report - ${SERVER_NAME}*\n\n"
-    message="${message}📅 *Date:* $(date +%Y-%m-%d)\n"
-    message="${message}⏰ *Time:* $(date +%H:%M:%S)\n\n"
+    message="${message}📅 *Date:* $(date +%Y-%m-%d)\n\n"
     message="${message}📈 *Today's Usage:* ${daily_gb} GB\n\n"
     message="${message}📊 *Billing Cycle Stats:*\n"
     message="${message}├ Used: ${cumulative_gb} GB\n"
