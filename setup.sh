@@ -364,6 +364,37 @@ main() {
         fi
     fi
 
+    # Check if this is first run (no configuration exists)
+    if [ ! -f "${CONFIG_FILE}" ]; then
+        clear
+        echo "======================================"
+        echo "  Welcome to VPS Traffic Reporter"
+        echo "======================================"
+        echo ""
+        print_info "First time setup detected!"
+        echo ""
+        print_info "Let's configure your VPS traffic monitoring system."
+        print_info "You will need:"
+        echo "  - Telegram Bot Token (from @BotFather)"
+        echo "  - Telegram Chat ID (from @userinfobot)"
+        echo "  - Your VPS traffic limits and reset schedule"
+        echo ""
+        read -p "Press Enter to start configuration..."
+
+        # Run initial configuration
+        update_configuration
+
+        echo ""
+        print_success "Initial configuration completed!"
+        echo ""
+        print_info "You can now:"
+        echo "  - Test notification (option 4)"
+        echo "  - Run a test report (option 5)"
+        echo "  - Or just press Enter to exit and let cron do its job"
+        echo ""
+        read -p "Press Enter to continue to main menu..."
+    fi
+
     while true; do
         show_menu
 
