@@ -297,6 +297,77 @@ get_progress_bar() {
     echo "${bar}"
 }
 
+# Function to get days since reset
+get_days_since_reset() {
+    # Get the reset date from database
+    local reset_date=$(grep "RESET|" "${TRAFFIC_DATA_FILE}" 2>/dev/null | tail -1 | cut -d'|' -f2 || echo "")
+
+    if [ -z "${reset_date}" ]; then
+        echo "1"  # Default to 1 if no reset date found
+        return
+    fi
+
+    # Calculate days between reset date and today
+    local today=$(date +%Y-%m-%d)
+    local reset_timestamp=$(date -d "${reset_date}" +%s 2>/dev/null || echo "0")
+    local today_timestamp=$(date -d "${today}" +%s 2>/dev/null || echo "0")
+
+    if [ "${reset_timestamp}" -eq 0 ] || [ "${today_timestamp}" -eq 0 ]; then
+        echo "1"
+        return
+    fi
+
+    local days_diff=$(( (today_timestamp - reset_timestamp) / 86400 ))
+
+    # Return at least 1 day to avoid division by zero
+    if [ "${days_diff}" -lt 1 ]; then
+        echo "1"
+    else
+        echo "${days_diff}"
+    fi
+}
+
+# Function to get daily average traffic in bytes
+get_daily_average() {
+    local cumulative_bytes=$1
+    local days_since_reset=$(get_days_since_reset)
+
+    # Calculate average (avoid division by zero)
+    if [ "${days_since_reset}" -lt 1 ]; then
+        days_since_reset=1
+    fi
+
+    local average=$(awk "BEGIN {printf \"%.0f\", ${cumulative_bytes}/${days_since_reset}}")
+    echo "${average}"
+}
+
+# Function to determine traffic status
+# Returns: status_code|status_text|status_emoji
+get_traffic_status() {
+    local daily_bytes=$1
+    local average_bytes=$2
+
+    # Avoid division by zero
+    if [ "${average_bytes}" -eq 0 ] || [ "${daily_bytes}" -eq 0 ]; then
+        echo "normal|流量正常|✅"
+        return
+    fi
+
+    # Calculate ratio: daily / average
+    local ratio=$(awk "BEGIN {printf \"%.2f\", ${daily_bytes}/${average_bytes}}")
+
+    # Determine status based on ratio
+    if (( $(echo "${ratio} >= 3.0" | bc -l) )); then
+        echo "critical|流量异常|🔴"
+    elif (( $(echo "${ratio} >= 2.0" | bc -l) )); then
+        echo "high|流量较高|⚠️"
+    elif (( $(echo "${ratio} < 0.5" | bc -l) )); then
+        echo "low|流量偏低|🟢"
+    else
+        echo "normal|流量正常|✅"
+    fi
+}
+
 # Function to send daily report
 send_daily_report() {
     local daily_bytes=$(get_daily_traffic)
@@ -312,6 +383,23 @@ send_daily_report() {
 
     # Get progress bar
     local progress_bar=$(get_progress_bar ${percentage})
+
+    # Calculate daily average and traffic status
+    local average_bytes=$(get_daily_average ${cumulative_bytes})
+    local average_gb=$(bytes_to_gb ${average_bytes})
+    local days_since_reset=$(get_days_since_reset)
+
+    # Get traffic status (format: status_code|status_text|status_emoji)
+    local status_info=$(get_traffic_status ${daily_bytes} ${average_bytes})
+    local status_code=$(echo "${status_info}" | cut -d'|' -f1)
+    local status_text=$(echo "${status_info}" | cut -d'|' -f2)
+    local status_emoji=$(echo "${status_info}" | cut -d'|' -f3)
+
+    # Calculate ratio for display
+    local ratio="N/A"
+    if [ "${average_bytes}" -gt 0 ] 2>/dev/null; then
+        ratio=$(awk "BEGIN {printf \"%.1f\", ${daily_bytes}/${average_bytes}}")
+    fi
 
     # Get billing cycle info
     local current_day=$(date +%d)
@@ -330,19 +418,21 @@ send_daily_report() {
         days_until_reset=$(( ($(date -d "${next_reset_date}" +%s) - $(date +%s)) / 86400 ))
     fi
 
-    # Determine status emoji
-    local status_emoji="✅"
+    # Determine cycle status emoji
+    local cycle_status_emoji="✅"
     if (( $(echo "${percentage} >= 90" | bc -l) )); then
-        status_emoji="🔴"
+        cycle_status_emoji="🔴"
     elif (( $(echo "${percentage} >= 75" | bc -l) )); then
-        status_emoji="🟡"
+        cycle_status_emoji="🟡"
     elif (( $(echo "${percentage} >= 50" | bc -l) )); then
-        status_emoji="🟠"
+        cycle_status_emoji="🟠"
     fi
 
     # Build message
     local message="📊 *Daily Traffic Report - ${SERVER_NAME}*\n\n"
-    message="${message}📈 *Today's Usage:* ${daily_gb} GB\n\n"
+    message="${message}📈 *Today's Usage:* ${daily_gb} GB ${status_emoji}\n"
+    message="${message}├ Daily Average: ${average_gb} GB\n"
+    message="${message}└ Ratio: ${ratio}x average\n\n"
     message="${message}📊 *Billing Cycle Stats:*\n"
     message="${message}├ Used: ${cumulative_gb} GB\n"
     message="${message}├ Limit: ${limit_gb} GB\n"
@@ -350,11 +440,19 @@ send_daily_report() {
     message="${message}${progress_bar} ${percentage}%\n\n"
     message="${message}🔄 *Cycle Info:*\n"
     message="${message}├ Reset Day: ${reset_day} of each month\n"
+    message="${message}├ Days in cycle: ${days_since_reset}\n"
     message="${message}└ Days until reset: ${days_until_reset}"
 
-    # Add warning if usage is high
+    # Add warning if daily usage is critical
+    if [ "${status_code}" == "critical" ]; then
+        message="${message}\n\n⚠️ *警告:* 今日流量异常偏高！"
+    elif [ "${status_code}" == "high" ]; then
+        message="${message}\n\n💡 *提示:* 今日流量较高，请注意。"
+    fi
+
+    # Add warning if cycle usage is high
     if (( $(echo "${percentage} >= 90" | bc -l) )); then
-        message="${message}⚠️ *WARNING:* High usage detected!\n"
+        message="${message}\n⚠️ *WARNING:* 月流量接近上限！"
     fi
 
     # Send notification
