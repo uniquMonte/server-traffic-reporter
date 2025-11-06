@@ -63,9 +63,9 @@ view_configuration() {
         # Determine traffic mode name
         local traffic_mode="Bidirectional"
         case "${TRAFFIC_DIRECTION:-1}" in
-            1) traffic_mode="Bidirectional (upload + download)" ;;
-            2) traffic_mode="Download only" ;;
-            3) traffic_mode="Upload only" ;;
+            1) traffic_mode="Bidirectional (both directions)" ;;
+            2) traffic_mode="Outbound only (server to client)" ;;
+            3) traffic_mode="Inbound only (client to server)" ;;
         esac
 
         echo "Server Name: ${SERVER_NAME:-Not set}"
@@ -148,10 +148,10 @@ update_configuration() {
     # Traffic Direction
     echo ""
     print_info "Traffic counting mode:"
-    echo "  1) Bidirectional (upload + download, most common)"
-    echo "  2) Download only (outbound traffic)"
-    echo "  3) Upload only (inbound traffic)"
-    read -p "Select traffic mode (1/2/3) [${TRAFFIC_DIRECTION:-1}]: " input < /dev/tty
+    echo "  1) Bidirectional (both directions, RECOMMENDED)"
+    echo "  2) Outbound only (server to client, download)"
+    echo "  3) Inbound only (client to server, upload)"
+    read -p "Select traffic mode (1/2/3) [1]: " input < /dev/tty
     TRAFFIC_DIRECTION="${input:-${TRAFFIC_DIRECTION:-1}}"
 
     # Validate traffic direction

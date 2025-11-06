@@ -34,16 +34,16 @@ get_current_traffic() {
     local total_bytes=0
     case "${TRAFFIC_DIRECTION:-1}" in
         1)
-            # Bidirectional (upload + download)
+            # Bidirectional (both directions)
             total_bytes=$((rx_bytes + tx_bytes))
             ;;
         2)
-            # Download only (received/inbound)
-            total_bytes=${rx_bytes}
+            # Outbound only (server to client, tx = transmitted)
+            total_bytes=${tx_bytes}
             ;;
         3)
-            # Upload only (transmitted/outbound)
-            total_bytes=${tx_bytes}
+            # Inbound only (client to server, rx = received)
+            total_bytes=${rx_bytes}
             ;;
         *)
             # Default to bidirectional
