@@ -218,7 +218,7 @@ send_daily_report() {
     fi
 
     # Build message
-    local message="📊 *Daily Traffic Report - ${SERVER_NAME}*\n"
+    local message="📊 *Daily Traffic Report - ${SERVER_NAME}*\n\n"
     message="${message}📅 *Date:* $(date +%Y-%m-%d)\n"
     message="${message}📈 *Today's Usage:* ${daily_gb} GB\n\n"
     message="${message}📊 *Billing Cycle Stats:*\n"
