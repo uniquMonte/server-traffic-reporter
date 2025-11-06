@@ -153,13 +153,36 @@ get_cumulative_traffic() {
 # Function to get today's traffic
 get_daily_traffic() {
     local today=$(date +%Y-%m-%d)
-    local yesterday_cumulative=$(grep -v "^#" "${TRAFFIC_DATA_FILE}" | grep -v "RESET" | tail -1 | cut -d'|' -f3 || echo "0")
     local current_cumulative=$(get_cumulative_traffic)
-    local daily=$((current_cumulative - yesterday_cumulative))
 
-    # If daily is negative, it means it's the first entry or a reset happened
+    # Find today's starting cumulative (first entry of today, or last entry of yesterday)
+    local today_start_cumulative=0
+
+    # Check if there's any entry for today already
+    local today_first_entry=$(grep -v "^#" "${TRAFFIC_DATA_FILE}" | grep "^${today}|" | head -1 | cut -d'|' -f3 2>/dev/null || echo "")
+
+    if [ -n "${today_first_entry}" ]; then
+        # Today has entries, get the cumulative from yesterday's last entry
+        local yesterday=$(date -d "${today} -1 day" +%Y-%m-%d 2>/dev/null || date -d "yesterday" +%Y-%m-%d)
+        local yesterday_last=$(grep -v "^#" "${TRAFFIC_DATA_FILE}" | grep "^${yesterday}|" | tail -1 | cut -d'|' -f3 2>/dev/null || echo "")
+
+        if [ -n "${yesterday_last}" ]; then
+            today_start_cumulative=${yesterday_last}
+        else
+            # No yesterday entry, use the last non-today entry
+            today_start_cumulative=$(grep -v "^#" "${TRAFFIC_DATA_FILE}" | grep -v "^${today}|" | grep -v "RESET" | tail -1 | cut -d'|' -f3 2>/dev/null || echo "0")
+        fi
+    else
+        # No entry for today yet, use last entry's cumulative as starting point
+        today_start_cumulative=$(grep -v "^#" "${TRAFFIC_DATA_FILE}" | grep -v "RESET" | tail -1 | cut -d'|' -f3 2>/dev/null || echo "0")
+    fi
+
+    # Calculate today's usage
+    local daily=$((current_cumulative - today_start_cumulative))
+
+    # If daily is negative, something is wrong (reset, etc.)
     if [ "${daily}" -lt 0 ] 2>/dev/null; then
-        daily=${current_cumulative}
+        daily=0
     fi
 
     echo "${daily}"
