@@ -81,50 +81,21 @@ init_traffic_db() {
         echo "# Traffic Database" > "${TRAFFIC_DATA_FILE}"
         echo "# Format: DATE|DAILY_BYTES|CUMULATIVE_BYTES|RESET_PERIOD" >> "${TRAFFIC_DATA_FILE}"
 
-        # Calculate the last reset date based on reset day configuration
-        # This ensures first run syncs with actual billing cycle
-        local current_day=$(date +%d)
+        # For first-time initialization, use TODAY as the reset date
+        # This is more intuitive for new VPS deployments
+        # The cycle will auto-reset on the configured reset day going forward
+        local today=$(date +%Y-%m-%d)
         local current_month=$(date +%Y-%m)
-        local reset_day=${TRAFFIC_RESET_DAY}
-        local days_in_month=$(date -d "${current_month}-01 +1 month -1 day" +%d)
 
-        # Adjust reset day if it exceeds days in current month
-        local effective_reset_day=${reset_day}
-        if [ "${reset_day}" -gt "${days_in_month}" ] 2>/dev/null; then
-            effective_reset_day=${days_in_month}
-        fi
-
-        local last_reset_date=""
-        local last_reset_month=""
-
-        # Determine the last reset date
-        if [ "${current_day}" -lt "${effective_reset_day}" ] 2>/dev/null; then
-            # Current day is before reset day - last reset was in previous month
-            local prev_month=$(date -d "${current_month}-01 -1 month" +%Y-%m)
-            local prev_month_days=$(date -d "${prev_month}-01 +1 month -1 day" +%d)
-
-            # Adjust reset day for previous month if needed
-            local prev_effective_reset_day=${reset_day}
-            if [ "${reset_day}" -gt "${prev_month_days}" ] 2>/dev/null; then
-                prev_effective_reset_day=${prev_month_days}
-            fi
-
-            last_reset_date="${prev_month}-$(printf "%02d" ${prev_effective_reset_day})"
-            last_reset_month="${prev_month}"
-        else
-            # Current day is on or after reset day - last reset was this month
-            last_reset_date="${current_month}-$(printf "%02d" ${effective_reset_day})"
-            last_reset_month="${current_month}"
-        fi
-
-        # Write the calculated last reset date
-        echo "RESET|${last_reset_date}|0|${last_reset_month}" >> "${TRAFFIC_DATA_FILE}"
+        # Write today as the reset date
+        echo "RESET|${today}|0|${current_month}" >> "${TRAFFIC_DATA_FILE}"
 
         # Record baseline for current traffic measurement
         local current_traffic=$(get_current_traffic "${NETWORK_INTERFACE}")
-        echo "$(date +%Y-%m-%d)|0|0|baseline=${current_traffic}" >> "${TRAFFIC_DATA_FILE}"
+        echo "${today}|0|0|baseline=${current_traffic}" >> "${TRAFFIC_DATA_FILE}"
 
-        echo "Initialized traffic database with last reset date: ${last_reset_date}"
+        echo "Initialized traffic database with reset date: ${today} (first run)"
+        echo "Future resets will occur on day ${TRAFFIC_RESET_DAY} of each month"
     fi
 }
 
