@@ -159,7 +159,7 @@ calculate_percentage() {
 # Function to get progress bar
 get_progress_bar() {
     local percentage=$1
-    local bar_length=20
+    local bar_length=10
     local filled=$(awk "BEGIN {printf \"%d\", (${percentage}/100)*${bar_length}}")
     local empty=$((bar_length - filled))
 
@@ -221,7 +221,6 @@ send_daily_report() {
     local message="📊 *Daily Traffic Report - ${SERVER_NAME}*\n\n"
     message="${message}📅 *Date:* $(date +%Y-%m-%d)\n"
     message="${message}⏰ *Time:* $(date +%H:%M:%S)\n\n"
-    message="${message}━━━━━━━━━━━━━━━━━━━━\n\n"
     message="${message}📈 *Today's Usage:* ${daily_gb} GB\n\n"
     message="${message}📊 *Billing Cycle Stats:*\n"
     message="${message}├ Used: ${cumulative_gb} GB\n"
@@ -229,7 +228,6 @@ send_daily_report() {
     message="${message}├ Remaining: $(awk "BEGIN {printf \"%.2f\", ${limit_gb}-${cumulative_gb}}") GB\n"
     message="${message}└ Usage: ${percentage}% ${status_emoji}\n\n"
     message="${message}${progress_bar} ${percentage}%\n\n"
-    message="${message}━━━━━━━━━━━━━━━━━━━━\n\n"
     message="${message}🔄 *Cycle Info:*\n"
     message="${message}├ Reset Day: ${reset_day} of each month\n"
     message="${message}└ Days until reset: ${days_until_reset}\n\n"
