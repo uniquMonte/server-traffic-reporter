@@ -79,7 +79,7 @@ view_configuration() {
     fi
 
     echo ""
-    read -p "Press Enter to continue..."
+    read -p "Press Enter to continue..." < /dev/tty
 }
 
 # Function to detect network interface
@@ -100,40 +100,40 @@ update_configuration() {
     load_config 2>/dev/null || true
 
     # Server Name
-    read -p "Enter server name [${SERVER_NAME:-MyVPS}]: " input
+    read -p "Enter server name [${SERVER_NAME:-MyVPS}]: " input < /dev/tty
     SERVER_NAME="${input:-${SERVER_NAME:-MyVPS}}"
 
     # Telegram Bot Token
     echo ""
     print_info "To create a Telegram bot, talk to @BotFather on Telegram"
-    read -p "Enter Telegram Bot Token [${TELEGRAM_BOT_TOKEN}]: " input
+    read -p "Enter Telegram Bot Token [${TELEGRAM_BOT_TOKEN}]: " input < /dev/tty
     TELEGRAM_BOT_TOKEN="${input:-${TELEGRAM_BOT_TOKEN}}"
 
     # Telegram Chat ID
     echo ""
     print_info "To get your Chat ID, talk to @userinfobot on Telegram"
-    read -p "Enter Telegram Chat ID [${TELEGRAM_CHAT_ID}]: " input
+    read -p "Enter Telegram Chat ID [${TELEGRAM_CHAT_ID}]: " input < /dev/tty
     TELEGRAM_CHAT_ID="${input:-${TELEGRAM_CHAT_ID}}"
 
     # Traffic Reset Day
     echo ""
-    read -p "Enter traffic reset day (1-31) [${TRAFFIC_RESET_DAY:-3}]: " input
+    read -p "Enter traffic reset day (1-31) [${TRAFFIC_RESET_DAY:-3}]: " input < /dev/tty
     TRAFFIC_RESET_DAY="${input:-${TRAFFIC_RESET_DAY:-3}}"
 
     # Monthly Traffic Limit
     echo ""
-    read -p "Enter monthly traffic limit in GB [${MONTHLY_TRAFFIC_LIMIT:-500}]: " input
+    read -p "Enter monthly traffic limit in GB [${MONTHLY_TRAFFIC_LIMIT:-500}]: " input < /dev/tty
     MONTHLY_TRAFFIC_LIMIT="${input:-${MONTHLY_TRAFFIC_LIMIT:-500}}"
 
     # Report Time
     echo ""
-    read -p "Enter daily report time (HH:MM format, 24h) [${REPORT_TIME:-09:00}]: " input
+    read -p "Enter daily report time (HH:MM format, 24h) [${REPORT_TIME:-09:00}]: " input < /dev/tty
     REPORT_TIME="${input:-${REPORT_TIME:-09:00}}"
 
     # Network Interface
     echo ""
     local default_interface=$(detect_network_interface)
-    read -p "Enter network interface [${NETWORK_INTERFACE:-${default_interface}}]: " input
+    read -p "Enter network interface [${NETWORK_INTERFACE:-${default_interface}}]: " input < /dev/tty
     NETWORK_INTERFACE="${input:-${NETWORK_INTERFACE:-${default_interface}}}"
 
     # Save configuration
@@ -155,13 +155,17 @@ EOF
     echo ""
 
     # Ask to install cron job
-    read -p "Do you want to install the cron job for automatic daily reports? (y/n): " install_cron
+    read -p "Install cron job for automatic daily reports? (Y/n, press Enter for yes): " install_cron < /dev/tty
+
+    # Default to yes if empty
+    install_cron=${install_cron:-y}
+
     if [[ "${install_cron}" =~ ^[Yy]$ ]]; then
         install_cron_job
     fi
 
     echo ""
-    read -p "Press Enter to continue..."
+    read -p "Press Enter to continue..." < /dev/tty
 }
 
 # Function to install cron job
@@ -227,7 +231,7 @@ update_scripts() {
     fi
 
     echo ""
-    read -p "Press Enter to continue..."
+    read -p "Press Enter to continue..." < /dev/tty
 }
 
 # Function to test notification
@@ -240,7 +244,7 @@ test_notification() {
 
     if [ ! -f "${CONFIG_FILE}" ]; then
         print_error "Configuration not found. Please update configuration first."
-        read -p "Press Enter to continue..."
+        read -p "Press Enter to continue..." < /dev/tty
         return 1
     fi
 
@@ -257,7 +261,7 @@ test_notification() {
     fi
 
     echo ""
-    read -p "Press Enter to continue..."
+    read -p "Press Enter to continue..." < /dev/tty
 }
 
 # Function to run traffic report now
@@ -270,7 +274,7 @@ run_report_now() {
 
     if [ ! -f "${CONFIG_FILE}" ]; then
         print_error "Configuration not found. Please update configuration first."
-        read -p "Press Enter to continue..."
+        read -p "Press Enter to continue..." < /dev/tty
         return 1
     fi
 
@@ -285,7 +289,7 @@ run_report_now() {
     fi
 
     echo ""
-    read -p "Press Enter to continue..."
+    read -p "Press Enter to continue..." < /dev/tty
 }
 
 # Function to uninstall
@@ -297,11 +301,11 @@ uninstall() {
     echo ""
 
     print_warning "This will remove all cron jobs and data files."
-    read -p "Are you sure you want to uninstall? (yes/no): " confirm
+    read -p "Are you sure you want to uninstall? (yes/no): " confirm < /dev/tty
 
     if [ "${confirm}" != "yes" ]; then
         print_info "Uninstall cancelled."
-        read -p "Press Enter to continue..."
+        read -p "Press Enter to continue..." < /dev/tty
         return 0
     fi
 
@@ -309,7 +313,11 @@ uninstall() {
     uninstall_cron_job
 
     # Ask if user wants to delete data
-    read -p "Do you want to delete all data files? (y/n): " delete_data
+    read -p "Delete all data files? (Y/n, press Enter for yes): " delete_data < /dev/tty
+
+    # Default to yes if empty
+    delete_data=${delete_data:-y}
+
     if [[ "${delete_data}" =~ ^[Yy]$ ]]; then
         rm -rf "${CONFIG_DIR}" "${DATA_DIR}"
         print_success "Data files removed"
@@ -320,7 +328,7 @@ uninstall() {
     print_info "To completely remove the program, delete this directory:"
     echo "  rm -rf ${SCRIPT_DIR}"
     echo ""
-    read -p "Press Enter to exit..."
+    read -p "Press Enter to exit..." < /dev/tty
     exit 0
 }
 
@@ -339,7 +347,7 @@ show_menu() {
     echo "6) Uninstall"
     echo "0) Exit (or just press Enter)"
     echo ""
-    read -p "Select an option: " choice
+    read -p "Select an option: " choice < /dev/tty
     echo ""
 }
 
@@ -379,7 +387,7 @@ main() {
         echo "  - Telegram Chat ID (from @userinfobot)"
         echo "  - Your VPS traffic limits and reset schedule"
         echo ""
-        read -p "Press Enter to start configuration..."
+        read -p "Press Enter to start configuration..." < /dev/tty
 
         # Run initial configuration
         update_configuration
@@ -392,7 +400,7 @@ main() {
         echo "  - Run a test report (option 5)"
         echo "  - Or just press Enter to exit and let cron do its job"
         echo ""
-        read -p "Press Enter to continue to main menu..."
+        read -p "Press Enter to continue to main menu..." < /dev/tty
     fi
 
     while true; do
