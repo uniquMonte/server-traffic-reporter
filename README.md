@@ -38,6 +38,25 @@ VPS Traffic Reporter is a lightweight bash script that monitors your VPS network
 
 ### Installation
 
+#### Quick Install (Recommended)
+
+Install with a single command:
+
+```bash
+sudo bash <(curl -Ls https://raw.githubusercontent.com/uniquMonte/server-traffic-reporter/main/install.sh)
+```
+
+This will:
+- Check system requirements and install missing dependencies
+- Download the latest version from GitHub
+- Set up necessary permissions
+- Create a convenient command shortcut
+- Guide you through initial configuration
+
+#### Manual Installation
+
+If you prefer to install manually:
+
 1. **Clone the repository:**
    ```bash
    git clone https://github.com/uniquMonte/server-traffic-reporter.git
@@ -304,6 +323,25 @@ VPS Traffic Reporter 是一个轻量级的 Bash 脚本，用于监控 VPS 网络
 - 能访问 Telegram API
 
 ### 安装步骤
+
+#### 快速安装（推荐）
+
+使用一条命令完成安装：
+
+```bash
+sudo bash <(curl -Ls https://raw.githubusercontent.com/uniquMonte/server-traffic-reporter/main/install.sh)
+```
+
+安装程序将：
+- 检查系统要求并安装缺失的依赖
+- 从 GitHub 下载最新版本
+- 设置必要的权限
+- 创建便捷的命令快捷方式
+- 引导您完成初始配置
+
+#### 手动安装
+
+如果您希望手动安装：
 
 1. **克隆仓库:**
    ```bash
