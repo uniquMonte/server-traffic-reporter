@@ -288,12 +288,90 @@ show_next_steps() {
     echo ""
 }
 
+# Function to check if already installed
+check_existing_installation() {
+    local default_dir=""
+
+    # Check if running as root
+    if [ "$EUID" -eq 0 ]; then
+        default_dir="/opt/vps-traffic-reporter"
+    else
+        default_dir="${HOME}/vps-traffic-reporter"
+    fi
+
+    # Check if installation exists
+    if [ -d "${default_dir}" ] && [ -f "${default_dir}/setup.sh" ]; then
+        clear
+        echo "======================================"
+        echo "  VPS Traffic Reporter"
+        echo "======================================"
+        echo ""
+        print_success "VPS Traffic Reporter is already installed!"
+        echo ""
+        print_info "Installation directory: ${default_dir}"
+
+        # Check if config exists
+        if [ -f "${default_dir}/config/config.conf" ]; then
+            print_success "Configuration found"
+        else
+            print_warning "No configuration found"
+        fi
+
+        echo ""
+        echo "What would you like to do?"
+        echo ""
+        echo "1) Run VPS Traffic Reporter (recommended)"
+        echo "2) Reinstall (will remove existing installation)"
+        echo "3) Exit"
+        echo ""
+        read -p "Select an option (1/2/3): " choice < /dev/tty
+
+        case "${choice}" in
+            1|"")
+                echo ""
+                print_info "Starting VPS Traffic Reporter..."
+                sleep 1
+                cd "${default_dir}"
+                exec ./setup.sh
+                ;;
+            2)
+                echo ""
+                print_warning "This will remove the existing installation."
+                read -p "Are you sure? (Y/n, press Enter for yes): " confirm < /dev/tty
+                confirm=${confirm:-y}
+
+                if [[ "${confirm}" =~ ^[Yy]$ ]]; then
+                    print_info "Removing existing installation..."
+                    rm -rf "${default_dir}"
+                    print_success "Removed existing installation"
+                    echo ""
+                    return 0  # Continue with installation
+                else
+                    print_info "Reinstall cancelled"
+                    exit 0
+                fi
+                ;;
+            3)
+                print_info "Exiting..."
+                exit 0
+                ;;
+            *)
+                print_error "Invalid option"
+                exit 1
+                ;;
+        esac
+    fi
+}
+
 # Main installation function
 main() {
     print_header
 
     print_info "This script will install VPS Traffic Reporter on your system"
     echo ""
+
+    # Check if already installed
+    check_existing_installation
 
     # Check requirements
     check_requirements
