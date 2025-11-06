@@ -318,16 +318,21 @@ check_existing_installation() {
         fi
 
         echo ""
-        echo "What would you like to do?"
+        echo "Select an option:"
         echo ""
-        echo "1) Run VPS Traffic Reporter (recommended)"
-        echo "2) Reinstall (will remove existing installation)"
-        echo "3) Exit"
+        echo "1) Open main menu (view config, update, test, etc.)"
+        echo "2) Update scripts to latest version"
+        echo "3) Reinstall (will remove existing installation)"
+        echo "0) Exit (or just press Enter)"
         echo ""
-        read -p "Select an option (1/2/3): " choice < /dev/tty
+        read -p "Your choice: " choice < /dev/tty
 
         case "${choice}" in
-            1|"")
+            0|"")
+                print_info "Exiting..."
+                exit 0
+                ;;
+            1)
                 echo ""
                 print_info "Starting VPS Traffic Reporter..."
                 sleep 1
@@ -335,6 +340,32 @@ check_existing_installation() {
                 exec ./setup.sh
                 ;;
             2)
+                echo ""
+                print_info "Checking for updates..."
+                cd "${default_dir}"
+
+                if [ -d ".git" ]; then
+                    git fetch origin
+                    LOCAL=$(git rev-parse @)
+                    REMOTE=$(git rev-parse @{u} 2>/dev/null || echo "")
+
+                    if [ -z "${REMOTE}" ]; then
+                        print_warning "Cannot check for updates. No upstream branch set."
+                    elif [ "${LOCAL}" = "${REMOTE}" ]; then
+                        print_success "Already up to date!"
+                    else
+                        print_info "Updates available. Pulling changes..."
+                        git pull origin $(git rev-parse --abbrev-ref HEAD)
+                        print_success "Scripts updated successfully!"
+                    fi
+                else
+                    print_warning "Not a git repository. Cannot auto-update."
+                fi
+                echo ""
+                read -p "Press Enter to continue..." < /dev/tty
+                exec "$0"  # Restart to show menu again
+                ;;
+            3)
                 echo ""
                 print_warning "This will remove the existing installation."
                 read -p "Are you sure? (Y/n, press Enter for yes): " confirm < /dev/tty
@@ -351,13 +382,10 @@ check_existing_installation() {
                     exit 0
                 fi
                 ;;
-            3)
-                print_info "Exiting..."
-                exit 0
-                ;;
             *)
                 print_error "Invalid option"
-                exit 1
+                sleep 2
+                exec "$0"  # Restart the script
                 ;;
         esac
     fi
