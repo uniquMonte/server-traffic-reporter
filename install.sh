@@ -83,7 +83,10 @@ check_requirements() {
             echo "  Install: ${missing_deps[*]}"
         fi
         echo ""
-        read -p "Would you like to attempt automatic installation? (y/n): " auto_install < /dev/tty
+        read -p "Would you like to attempt automatic installation? (Y/n, press Enter for yes): " auto_install < /dev/tty
+
+        # Default to yes if empty
+        auto_install=${auto_install:-y}
 
         if [[ "${auto_install}" =~ ^[Yy]$ ]]; then
             if command_exists apt-get; then
@@ -139,8 +142,12 @@ determine_install_dir() {
 
     # Check if directory already exists
     if [ -d "${INSTALL_DIR}" ]; then
+        echo ""
         print_warning "Directory ${INSTALL_DIR} already exists!"
-        read -p "Do you want to remove it and reinstall? (y/n): " remove_existing < /dev/tty
+        read -p "Remove it and reinstall? (Y/n, press Enter for yes): " remove_existing < /dev/tty
+
+        # Default to yes if empty
+        remove_existing=${remove_existing:-y}
 
         if [[ "${remove_existing}" =~ ^[Yy]$ ]]; then
             print_info "Removing existing installation..."
