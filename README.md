@@ -40,10 +40,22 @@ VPS Traffic Reporter is a lightweight bash script that monitors your VPS network
 
 #### Quick Install (Recommended)
 
-Install with a single command:
+Install with a single command (choose one):
 
+**Method 1 - Using curl:**
 ```bash
-sudo bash <(curl -Ls https://raw.githubusercontent.com/uniquMonte/server-traffic-reporter/main/install.sh)
+curl -Ls https://raw.githubusercontent.com/uniquMonte/server-traffic-reporter/main/install.sh | sudo bash
+```
+
+**Method 2 - Using wget:**
+```bash
+wget -qO- https://raw.githubusercontent.com/uniquMonte/server-traffic-reporter/main/install.sh | sudo bash
+```
+
+**Method 3 - Download then run:**
+```bash
+curl -Ls https://raw.githubusercontent.com/uniquMonte/server-traffic-reporter/main/install.sh -o install.sh
+sudo bash install.sh
 ```
 
 This will:
@@ -326,10 +338,22 @@ VPS Traffic Reporter 是一个轻量级的 Bash 脚本，用于监控 VPS 网络
 
 #### 快速安装（推荐）
 
-使用一条命令完成安装：
+使用一条命令完成安装（三选一）：
 
+**方法 1 - 使用 curl:**
 ```bash
-sudo bash <(curl -Ls https://raw.githubusercontent.com/uniquMonte/server-traffic-reporter/main/install.sh)
+curl -Ls https://raw.githubusercontent.com/uniquMonte/server-traffic-reporter/main/install.sh | sudo bash
+```
+
+**方法 2 - 使用 wget:**
+```bash
+wget -qO- https://raw.githubusercontent.com/uniquMonte/server-traffic-reporter/main/install.sh | sudo bash
+```
+
+**方法 3 - 下载后运行:**
+```bash
+curl -Ls https://raw.githubusercontent.com/uniquMonte/server-traffic-reporter/main/install.sh -o install.sh
+sudo bash install.sh
 ```
 
 安装程序将：
