@@ -258,13 +258,13 @@ get_progress_bar() {
     local empty=$((bar_length - filled))
 
     local bar=""
-    # Filled dots with green color
+    # Filled squares with green color
     for ((i=0; i<filled; i++)); do
-        bar="${bar}🟢"
+        bar="${bar}🟩"
     done
-    # Empty dots with white color
+    # Empty squares with white color
     for ((i=0; i<empty; i++)); do
-        bar="${bar}⚪"
+        bar="${bar}⬜"
     done
 
     echo "${bar}"
@@ -372,7 +372,7 @@ send_daily_report() {
     local ratio="N/A"
     local comparison_text="N/A"
     if [ "${average_bytes}" -gt 0 ] 2>/dev/null; then
-        ratio=$(awk "BEGIN {printf \"%.1f\", ${daily_bytes}/${average_bytes}}")
+        ratio=$(awk "BEGIN {printf \"%.2f\", ${daily_bytes}/${average_bytes}}")
 
         # Generate user-friendly comparison text
         if (( $(echo "${ratio} >= 1.5" | bc -l) )); then
@@ -422,7 +422,7 @@ send_daily_report() {
     message="${message}📈 *Today's Usage*\n"
     message="${message}├  Usage: ${daily_gb} GB\n"
     message="${message}├  Average: ${average_gb} GB\n"
-    message="${message}└  Status: ${ratio}x ${status_emoji}\n\n"
+    message="${message}└  Status: ${ratio}x ${status_emoji} ${status_text}\n\n"
     message="${message}💳 *Billing Cycle*\n"
     message="${message}├  Limit: ${limit_gb} GB\n"
     message="${message}├  Used: ${cumulative_gb} GB\n"
