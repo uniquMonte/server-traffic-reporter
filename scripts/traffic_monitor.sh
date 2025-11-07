@@ -292,11 +292,15 @@ get_days_since_reset() {
 
     local days_diff=$(( (today_timestamp - reset_timestamp) / 86400 ))
 
-    # Return at least 1 day to avoid division by zero
-    if [ "${days_diff}" -lt 1 ]; then
+    # Add 1 to convert from "days elapsed" to "day number"
+    # Reset day = Day 1, next day = Day 2, etc.
+    local day_number=$((days_diff + 1))
+
+    # Return at least 1
+    if [ "${day_number}" -lt 1 ]; then
         echo "1"
     else
-        echo "${days_diff}"
+        echo "${day_number}"
     fi
 }
 
@@ -400,11 +404,19 @@ send_daily_report() {
     local days_until_reset=0
 
     if [ "$((10#${current_day}))" -lt "$((10#${TRAFFIC_RESET_DAY}))" ] 2>/dev/null; then
-        days_until_reset=$((10#${TRAFFIC_RESET_DAY} - 10#${current_day}))
+        # Days remaining = reset_day - current_day - 1
+        # The -1 is because the reset day itself is not included in current cycle
+        # Example: today is 8th, reset on 15th → remaining days = 15 - 8 - 1 = 6 (9th to 14th)
+        days_until_reset=$((10#${TRAFFIC_RESET_DAY} - 10#${current_day} - 1))
     else
+        # Calculate days until next month's reset date
         local next_month=$(date -d "${current_month}-01 +1 month" +%Y-%m)
         local next_reset_date="${next_month}-${reset_day}"
-        days_until_reset=$(( ($(date -d "${next_reset_date}" +%s) - $(date +%s)) / 86400 ))
+        local today_date=$(date +%Y-%m-%d)
+
+        # Use today's 00:00 timestamp for stable calculation
+        # Subtract 1 because reset day is not included in current cycle
+        days_until_reset=$(( ($(date -d "${next_reset_date}" +%s) - $(date -d "${today_date}" +%s)) / 86400 - 1 ))
     fi
 
     # Determine cycle status emoji
