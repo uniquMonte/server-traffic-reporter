@@ -111,7 +111,7 @@ need_reset() {
     # If reset day exceeds days in month, use last day of month
     # Example: reset_day=31 in February (28/29 days) → use 28/29
     local effective_reset_day=${reset_day}
-    if [ "${reset_day}" -gt "${days_in_month}" ] 2>/dev/null; then
+    if [ "$((10#${reset_day}))" -gt "$((10#${days_in_month}))" ] 2>/dev/null; then
         effective_reset_day=${days_in_month}
     fi
 
@@ -142,7 +142,7 @@ need_reset() {
 
     # Additional check: if last reset was in a previous month and we're past the reset day
     # Handle year boundary (e.g., last reset was 2024-12, current is 2025-01)
-    if [ "${current_day}" -ge "${effective_reset_day}" ] 2>/dev/null; then
+    if [ "$((10#${current_day}))" -ge "$((10#${effective_reset_day}))" ] 2>/dev/null; then
         if [ "${last_reset_month}" != "${current_month}" ]; then
             return 0  # Need reset
         fi
@@ -397,8 +397,8 @@ send_daily_report() {
     local days_in_month=$(date -d "${current_month}-01 +1 month -1 day" +%d)
     local days_until_reset=0
 
-    if [ "${current_day}" -lt "${TRAFFIC_RESET_DAY}" ] 2>/dev/null; then
-        days_until_reset=$((TRAFFIC_RESET_DAY - current_day))
+    if [ "$((10#${current_day}))" -lt "$((10#${TRAFFIC_RESET_DAY}))" ] 2>/dev/null; then
+        days_until_reset=$((10#${TRAFFIC_RESET_DAY} - 10#${current_day}))
     else
         local next_month=$(date -d "${current_month}-01 +1 month" +%Y-%m)
         local next_reset_date="${next_month}-${reset_day}"
