@@ -368,8 +368,24 @@ send_daily_report() {
 
     # Calculate ratio for display
     local ratio="N/A"
+    local comparison_text="N/A"
     if [ "${average_bytes}" -gt 0 ] 2>/dev/null; then
         ratio=$(awk "BEGIN {printf \"%.1f\", ${daily_bytes}/${average_bytes}}")
+
+        # Generate user-friendly comparison text
+        if (( $(echo "${ratio} >= 1.5" | bc -l) )); then
+            local percent=$(awk "BEGIN {printf \"%.0f\", (${ratio}-1)*100}")
+            comparison_text="${percent}% above average"
+        elif (( $(echo "${ratio} >= 1.1" | bc -l) )); then
+            comparison_text="slightly above average"
+        elif (( $(echo "${ratio} <= 0.5" | bc -l) )); then
+            local percent=$(awk "BEGIN {printf \"%.0f\", (1-${ratio})*100}")
+            comparison_text="${percent}% below average"
+        elif (( $(echo "${ratio} <= 0.9" | bc -l) )); then
+            comparison_text="slightly below average"
+        else
+            comparison_text="normal"
+        fi
     fi
 
     # Get billing cycle info
@@ -402,7 +418,7 @@ send_daily_report() {
     # Build message
     local message="📊 *Daily Traffic Report*\n🖥️ ${SERVER_NAME}\n\n"
     message="${message}📈 *Today's Usage:* ${daily_gb} GB ${status_emoji}\n"
-    message="${message}   Daily Avg: ${average_gb} GB (${ratio}x)\n\n"
+    message="${message}   Daily Avg: ${average_gb} GB (${comparison_text})\n\n"
     message="${message}💳 *Billing Cycle:* ${limit_gb} GB\n"
     message="${message}   Used: ${cumulative_gb} GB\n"
     message="${message}   ${progress_bar} ${percentage}%\n\n"
