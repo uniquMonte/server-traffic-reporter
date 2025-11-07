@@ -404,6 +404,7 @@ send_daily_report() {
     message="${message}📈 *Today's Usage:* ${daily_gb} GB ${status_emoji}\n"
     message="${message}   Daily Avg: ${average_gb} GB (${ratio}x)\n\n"
     message="${message}💳 *Billing Cycle:* ${limit_gb} GB\n"
+    message="${message}   Used: ${cumulative_gb} GB\n"
     message="${message}   ${progress_bar} ${percentage}%\n\n"
     message="${message}🔄 *Cycle Info*\n"
     message="${message}   Day ${days_since_reset} / $((days_since_reset + days_until_reset)) • Next Reset: ${reset_day}th"
