@@ -434,7 +434,7 @@ send_daily_report() {
     message="${message}📈 *Today's Usage*\n"
     message="${message}├  Usage: ${daily_gb} GB\n"
     message="${message}├  Average: ${average_gb} GB\n"
-    message="${message}└  Status: ${ratio}x ${status_emoji} ${status_text}\n\n"
+    message="${message}└  Status: ${ratio}x of avg ${status_emoji} ${status_text}\n\n"
     message="${message}💳 *Billing Cycle*\n"
     message="${message}├  Limit: ${limit_gb} GB\n"
     message="${message}├  Used: ${cumulative_gb} GB\n"
