@@ -404,7 +404,7 @@ send_daily_report() {
     message="${message}📈 *Today's Usage:* ${daily_gb} GB ${status_emoji}\n"
     message="${message}├ Daily Average: ${average_gb} GB\n"
     message="${message}└ Ratio: ${ratio}x average\n\n"
-    message="${message}📊 *Billing Cycle Stats:*\n"
+    message="${message}💳 *Billing Cycle Stats:*\n"
     message="${message}├ Used: ${cumulative_gb} GB\n"
     message="${message}├ Limit: ${limit_gb} GB\n"
     message="${message}└ Remaining: $(awk "BEGIN {printf \"%.2f\", ${limit_gb}-${cumulative_gb}}") GB\n"
