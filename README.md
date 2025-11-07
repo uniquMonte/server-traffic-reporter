@@ -9,10 +9,6 @@
 
 ## English
 
-### Description
-
-VPS Traffic Reporter monitors your VPS network traffic and sends daily reports to Telegram. Track your monthly bandwidth usage and avoid overage charges.
-
 ### Features
 
 - 📊 Daily traffic reports via Telegram
@@ -35,63 +31,6 @@ curl -Ls https://raw.githubusercontent.com/uniquMonte/server-traffic-reporter/ma
 sudo bash install.sh
 ```
 
-### Setup
-
-Run the setup script:
-```bash
-./setup.sh
-```
-
-You'll need:
-1. **Telegram Bot Token** - Get from [@BotFather](https://t.me/BotFather)
-2. **Telegram Chat ID** - Get from [@userinfobot](https://t.me/userinfobot)
-3. **Traffic Reset Day** - Day of month when traffic resets (1-31)
-4. **Monthly Traffic Limit** - Your limit in GB
-5. **Network Interface** - Usually auto-detected (eth0, ens3, etc.)
-
-### Usage
-
-View configuration:
-```bash
-./setup.sh  # Select option 1
-```
-
-Update settings:
-```bash
-./setup.sh  # Select option 2
-```
-
-Test notification:
-```bash
-./setup.sh  # Select option 4
-```
-
-Run manual report:
-```bash
-./setup.sh  # Select option 5
-```
-
-### Report Format
-
-```
-📊 Daily Traffic Report
-🖥️ My-VPS-Server
-
-📈 Today's Usage
-├  Usage: 15.8 GB
-├  Average: 12.3 GB
-└  Status: 1.3x ⚠️
-
-💳 Billing Cycle
-├  Limit: 1000 GB
-├  Used: 234.5 GB
-└  ▓▓▓░░░░░░░ 23.45%
-
-🔄 Cycle Info
-├  Days: 7 / 30 (23 remaining)
-└  Resets: 15th of each month
-```
-
 ### License
 
 MIT License - see LICENSE file for details.
@@ -99,10 +38,6 @@ MIT License - see LICENSE file for details.
 ---
 
 ## 中文
-
-### 项目描述
-
-VPS Traffic Reporter 监控 VPS 网络流量，每天通过 Telegram 发送报告。追踪月度带宽使用，避免超额费用。
 
 ### 功能特点
 
@@ -124,63 +59,6 @@ curl -Ls https://raw.githubusercontent.com/uniquMonte/server-traffic-reporter/ma
 ```bash
 curl -Ls https://raw.githubusercontent.com/uniquMonte/server-traffic-reporter/main/install.sh -o install.sh
 sudo bash install.sh
-```
-
-### 设置
-
-运行设置脚本：
-```bash
-./setup.sh
-```
-
-需要提供：
-1. **Telegram Bot Token** - 从 [@BotFather](https://t.me/BotFather) 获取
-2. **Telegram Chat ID** - 从 [@userinfobot](https://t.me/userinfobot) 获取
-3. **流量重置日期** - 每月流量重置日期（1-31）
-4. **月流量限制** - 流量限制（GB）
-5. **网络接口** - 通常自动检测（eth0, ens3 等）
-
-### 使用方法
-
-查看配置：
-```bash
-./setup.sh  # 选择选项 1
-```
-
-更新设置：
-```bash
-./setup.sh  # 选择选项 2
-```
-
-测试通知：
-```bash
-./setup.sh  # 选择选项 4
-```
-
-手动运行报告：
-```bash
-./setup.sh  # 选择选项 5
-```
-
-### 报告格式
-
-```
-📊 Daily Traffic Report
-🖥️ My-VPS-Server
-
-📈 Today's Usage
-├  Usage: 15.8 GB
-├  Average: 12.3 GB
-└  Status: 1.3x ⚠️
-
-💳 Billing Cycle
-├  Limit: 1000 GB
-├  Used: 234.5 GB
-└  ▓▓▓░░░░░░░ 23.45%
-
-🔄 Cycle Info
-├  Days: 7 / 30 (23 remaining)
-└  Resets: 15th of each month
 ```
 
 ### 许可证
