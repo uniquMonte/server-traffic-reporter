@@ -418,16 +418,16 @@ send_daily_report() {
     # Build message
     local message="📊 *Daily Traffic Report*\n🖥️ ${SERVER_NAME}\n\n"
     message="${message}📈 *Today's Usage*\n"
-    message="${message}├ Usage: ${daily_gb} GB\n"
-    message="${message}├ Average: ${average_gb} GB\n"
-    message="${message}└ Status: ${ratio}x ${status_emoji}\n\n"
+    message="${message}├  Usage: ${daily_gb} GB\n"
+    message="${message}├  Average: ${average_gb} GB\n"
+    message="${message}└  Status: ${ratio}x ${status_emoji}\n\n"
     message="${message}💳 *Billing Cycle*\n"
-    message="${message}├ Limit: ${limit_gb} GB\n"
-    message="${message}├ Used: ${cumulative_gb} GB\n"
-    message="${message}└ ${progress_bar} ${percentage}%\n\n"
+    message="${message}├  Limit: ${limit_gb} GB\n"
+    message="${message}├  Used: ${cumulative_gb} GB\n"
+    message="${message}└  ${progress_bar} ${percentage}%\n\n"
     message="${message}🔄 *Cycle Info*\n"
-    message="${message}├ Days: ${days_since_reset} / $((days_since_reset + days_until_reset)) (${days_until_reset} remaining)\n"
-    message="${message}└ Resets: ${reset_day}th of each month"
+    message="${message}├  Days: ${days_since_reset} / $((days_since_reset + days_until_reset)) (${days_until_reset} remaining)\n"
+    message="${message}└  Resets: ${reset_day}th of each month"
 
     # Add warning if daily usage is critical
     if [ "${status_code}" == "critical" ]; then
