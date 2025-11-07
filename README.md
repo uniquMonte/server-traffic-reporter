@@ -1,17 +1,4 @@
-# VPS Traffic Reporter 📊
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Shell Script](https://img.shields.io/badge/Shell-Script-green.svg)](https://www.gnu.org/software/bash/)
-
-## Features
-
-- 📊 Automated daily traffic reports
-- 🔄 Automatic billing cycle management
-- 📈 Visual progress bars and usage statistics
-- ⚠️ Smart alerts for high traffic usage
-- ⚙️ Easy configuration with interactive setup
-
-### Quick Install
+## Quick Install
 
 Install with a single command:
 
