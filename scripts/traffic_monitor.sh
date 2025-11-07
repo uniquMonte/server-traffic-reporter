@@ -400,7 +400,7 @@ send_daily_report() {
     fi
 
     # Build message
-    local message="📊 *Daily Traffic Report*\n\n🖥️ Server: ${SERVER_NAME}\n\n"
+    local message="📊 *Daily Traffic Report*\n\n🖥️ Server: ${SERVER_NAME}\n"
     message="${message}📈 *Today's Usage:* ${daily_gb} GB ${status_emoji}\n"
     message="${message}├ Daily Average: ${average_gb} GB\n"
     message="${message}└ Ratio: ${ratio}x average\n\n"
