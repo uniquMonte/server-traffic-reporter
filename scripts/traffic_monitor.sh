@@ -253,35 +253,18 @@ calculate_percentage() {
 # Function to get progress bar
 get_progress_bar() {
     local percentage=$1
-    local bar_length=10
-    local total_eighths=$(awk "BEGIN {printf \"%.0f\", (${percentage}/100)*${bar_length}*8}")
-    local full_blocks=$((total_eighths / 8))
-    local remainder=$((total_eighths % 8))
+    local bar_length=8
+    local filled=$(awk "BEGIN {printf \"%.0f\", (${percentage}/100)*${bar_length}}")
+    local empty=$((bar_length - filled))
 
     local bar=""
-    # Full blocks with green emoji
-    for ((i=0; i<full_blocks; i++)); do
-        bar="${bar}🟩"
+    # Filled dots
+    for ((i=0; i<filled; i++)); do
+        bar="${bar}●"
     done
-
-    # Partial block with Unicode block characters (1/8 precision)
-    case $remainder in
-        7) bar="${bar}▉" ;;
-        6) bar="${bar}▊" ;;
-        5) bar="${bar}▋" ;;
-        4) bar="${bar}▌" ;;
-        3) bar="${bar}▍" ;;
-        2) bar="${bar}▎" ;;
-        1) bar="${bar}▏" ;;
-    esac
-
-    # Empty blocks with white emoji
-    local empty=$((bar_length - full_blocks))
-    if [ $remainder -gt 0 ]; then
-        empty=$((empty - 1))
-    fi
+    # Empty dots
     for ((i=0; i<empty; i++)); do
-        bar="${bar}⬜"
+        bar="${bar}○"
     done
 
     echo "${bar}"
