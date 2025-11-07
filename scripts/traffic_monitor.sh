@@ -405,7 +405,8 @@ send_daily_report() {
     message="${message}   Daily Avg: ${average_gb} GB (${ratio}x)\n\n"
     message="${message}💳 *Billing Cycle:* ${limit_gb} GB\n"
     message="${message}   ${progress_bar} ${percentage}%\n\n"
-    message="${message}🔄 *Cycle:* Day ${days_since_reset} of $((days_since_reset + days_until_reset)) | Reset: ${reset_day}th"
+    message="${message}🔄 *Cycle Info*\n"
+    message="${message}   Day ${days_since_reset} / $((days_since_reset + days_until_reset)) • Next Reset: ${reset_day}th"
 
     # Add warning if daily usage is critical
     if [ "${status_code}" == "critical" ]; then
