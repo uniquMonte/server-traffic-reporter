@@ -400,19 +400,15 @@ send_daily_report() {
     fi
 
     # Build message
-    local message="📊 *Daily Traffic Report*\n\n🖥️ Server: ${SERVER_NAME}\n"
-    message="${message}📈 *Today's Usage:* ${daily_gb} GB ${status_emoji}\n"
-    message="${message}├ Daily Average: ${average_gb} GB\n"
-    message="${message}└ Ratio: ${ratio}x average\n\n"
-    message="${message}💳 *Billing Cycle Stats:*\n"
-    message="${message}├ Used: ${cumulative_gb} GB\n"
-    message="${message}├ Limit: ${limit_gb} GB\n"
-    message="${message}└ Remaining: $(awk "BEGIN {printf \"%.2f\", ${limit_gb}-${cumulative_gb}}") GB\n"
-    message="${message}${progress_bar} ${percentage}%\n\n"
-    message="${message}🔄 *Cycle Info:*\n"
-    message="${message}├ Reset Day: ${reset_day} of each month\n"
-    message="${message}├ Days in cycle: ${days_since_reset}\n"
-    message="${message}└ Days until reset: ${days_until_reset}"
+    local message="📊 *Daily Traffic Report*\n🖥️ ${SERVER_NAME}\n\n"
+    message="${message}📈 *Today's Usage*\n"
+    message="${message}   ${daily_gb} GB ${status_emoji} (Avg: ${average_gb} GB, ${ratio}x)\n\n"
+    message="${message}💳 *Billing Cycle*\n"
+    message="${message}   Used: ${cumulative_gb} GB / ${limit_gb} GB (${percentage}%)\n"
+    message="${message}   ${progress_bar}\n"
+    message="${message}   Remaining: $(awk "BEGIN {printf \"%.2f\", ${limit_gb}-${cumulative_gb}}") GB\n\n"
+    message="${message}🔄 *Cycle Info*\n"
+    message="${message}   Day ${days_since_reset} of $((days_since_reset + days_until_reset)) • Reset on ${reset_day}th"
 
     # Add warning if daily usage is critical
     if [ "${status_code}" == "critical" ]; then
