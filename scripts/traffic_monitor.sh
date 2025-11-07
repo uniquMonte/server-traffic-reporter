@@ -407,7 +407,8 @@ send_daily_report() {
     message="${message}   Used: ${cumulative_gb} GB\n"
     message="${message}   ${progress_bar} ${percentage}%\n\n"
     message="${message}🔄 *Cycle Info*\n"
-    message="${message}   Day ${days_since_reset} / $((days_since_reset + days_until_reset)) • Next Reset: ${reset_day}th"
+    message="${message}   Elapsed: ${days_since_reset} day(s) • Remaining: ${days_until_reset} day(s)\n"
+    message="${message}   Reset Day: ${reset_day}th of each month"
 
     # Add warning if daily usage is critical
     if [ "${status_code}" == "critical" ]; then
