@@ -403,10 +403,9 @@ send_daily_report() {
     local message="📊 *Daily Traffic Report*\n🖥️ ${SERVER_NAME}\n\n"
     message="${message}📈 *Today's Usage:* ${daily_gb} GB ${status_emoji}\n"
     message="${message}   Daily Avg: ${average_gb} GB (${ratio}x)\n\n"
-    message="${message}💳 *Billing Cycle* (${percentage}%)\n"
-    message="${message}   ${progress_bar}\n"
+    message="${message}💳 *Billing Cycle*\n"
     message="${message}   ${cumulative_gb} GB / ${limit_gb} GB\n"
-    message="${message}   Remaining: $(awk "BEGIN {printf \"%.2f\", ${limit_gb}-${cumulative_gb}}") GB\n\n"
+    message="${message}   ${progress_bar} ${percentage}%\n\n"
     message="${message}🔄 *Cycle:* Day ${days_since_reset} of $((days_since_reset + days_until_reset)) | Reset: ${reset_day}th"
 
     # Add warning if daily usage is critical
