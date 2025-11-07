@@ -75,38 +75,22 @@ Run manual report:
 
 ```
 📊 Daily Traffic Report
-🖥️ DMIT-LAX.EB.INTRO
+🖥️ My-VPS-Server
 
 📈 Today's Usage
-├  Usage: 2.16 GB
-├  Average: 2.16 GB
-└  Status: 1.0x ✅
+├  Usage: 15.8 GB
+├  Average: 12.3 GB
+└  Status: 1.3x ⚠️
 
 💳 Billing Cycle
-├  Limit: 500 GB
-├  Used: 2.16 GB
-└  ▓▓░░░░░░░░ 0.43%
+├  Limit: 1000 GB
+├  Used: 234.5 GB
+└  ▓▓▓░░░░░░░ 23.45%
 
 🔄 Cycle Info
-├  Days: 1 / 23 (22 remaining)
-└  Resets: 29th of each month
+├  Days: 7 / 30 (23 remaining)
+└  Resets: 15th of each month
 ```
-
-### Troubleshooting
-
-**Notifications not received?**
-- Test with `./setup.sh` option 4
-- Check Telegram bot token and chat ID
-- Verify network access: `curl -I https://api.telegram.org`
-
-**Traffic not tracking?**
-- Check network interface: `ip link show`
-- Verify traffic data: `cat data/traffic.db`
-
-**Cron not running?**
-- Check service: `systemctl status cron`
-- View jobs: `crontab -l`
-- Check logs: `cat data/cron.log`
 
 ### License
 
@@ -182,38 +166,22 @@ sudo bash install.sh
 
 ```
 📊 Daily Traffic Report
-🖥️ DMIT-LAX.EB.INTRO
+🖥️ My-VPS-Server
 
 📈 Today's Usage
-├  Usage: 2.16 GB
-├  Average: 2.16 GB
-└  Status: 1.0x ✅
+├  Usage: 15.8 GB
+├  Average: 12.3 GB
+└  Status: 1.3x ⚠️
 
 💳 Billing Cycle
-├  Limit: 500 GB
-├  Used: 2.16 GB
-└  ▓▓░░░░░░░░ 0.43%
+├  Limit: 1000 GB
+├  Used: 234.5 GB
+└  ▓▓▓░░░░░░░ 23.45%
 
 🔄 Cycle Info
-├  Days: 1 / 23 (22 remaining)
-└  Resets: 29th of each month
+├  Days: 7 / 30 (23 remaining)
+└  Resets: 15th of each month
 ```
-
-### 故障排除
-
-**收不到通知？**
-- 使用 `./setup.sh` 选项 4 测试
-- 检查 Telegram bot token 和 chat ID
-- 验证网络访问：`curl -I https://api.telegram.org`
-
-**流量统计不正确？**
-- 检查网络接口：`ip link show`
-- 验证流量数据：`cat data/traffic.db`
-
-**定时任务未运行？**
-- 检查服务：`systemctl status cron`
-- 查看任务：`crontab -l`
-- 检查日志：`cat data/cron.log`
 
 ### 许可证
 
