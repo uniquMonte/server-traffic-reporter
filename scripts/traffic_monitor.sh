@@ -258,13 +258,13 @@ get_progress_bar() {
     local empty=$((bar_length - filled))
 
     local bar=""
-    # Filled dots
+    # Filled dots with green color
     for ((i=0; i<filled; i++)); do
-        bar="${bar}●"
+        bar="${bar}🟢"
     done
-    # Empty dots
+    # Empty dots with white color
     for ((i=0; i<empty; i++)); do
-        bar="${bar}○"
+        bar="${bar}⚪"
     done
 
     echo "${bar}"
