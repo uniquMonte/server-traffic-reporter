@@ -5,7 +5,7 @@
 
 ## Features
 
-- 📊 Daily traffic reports via Telegram
+- 📊 Automated daily traffic reports
 - 🔄 Automatic billing cycle management
 - 📈 Visual progress bars and usage statistics
 - ⚠️ Smart alerts for high traffic usage
