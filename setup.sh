@@ -236,8 +236,16 @@ update_scripts() {
 
     if [ -d "${SCRIPT_DIR}/.git" ]; then
         cd "${SCRIPT_DIR}"
+
+        # Check for local modifications
+        if ! git diff-index --quiet HEAD 2>/dev/null; then
+            print_warning "You have local modifications. Creating backup..."
+            git stash save "Auto-backup before update $(date +%Y%m%d_%H%M%S)" 2>/dev/null || true
+        fi
+
         git fetch origin
 
+        local CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
         local LOCAL=$(git rev-parse @)
         local REMOTE=$(git rev-parse @{u} 2>/dev/null || echo "")
 
@@ -247,8 +255,22 @@ update_scripts() {
             print_success "Already up to date!"
         else
             print_info "Updates available. Pulling changes..."
-            git pull origin $(git rev-parse --abbrev-ref HEAD)
-            print_success "Scripts updated successfully!"
+
+            # Try to pull with rebase first
+            if git pull --rebase origin "${CURRENT_BRANCH}" 2>/dev/null; then
+                print_success "Scripts updated successfully!"
+            else
+                print_warning "Rebase failed. Attempting reset to remote..."
+                git rebase --abort 2>/dev/null || true
+
+                # Force reset to remote (safe for monitoring scripts)
+                if git reset --hard origin/"${CURRENT_BRANCH}" 2>/dev/null; then
+                    print_success "Scripts force-updated to latest version!"
+                    print_info "Local changes were discarded. Check git stash if needed."
+                else
+                    print_error "Update failed. Please update manually."
+                fi
+            fi
         fi
     else
         print_warning "Not a git repository. Cannot auto-update."
