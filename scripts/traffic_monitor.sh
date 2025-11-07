@@ -253,16 +253,16 @@ calculate_percentage() {
 # Function to get progress bar
 get_progress_bar() {
     local percentage=$1
-    local bar_length=10
+    local bar_length=8
     local filled=$(awk "BEGIN {printf \"%d\", (${percentage}/100)*${bar_length}}")
     local empty=$((bar_length - filled))
 
     local bar=""
     for ((i=0; i<filled; i++)); do
-        bar="${bar}●"
+        bar="${bar}🟢"
     done
     for ((i=0; i<empty; i++)); do
-        bar="${bar}○"
+        bar="${bar}⚪"
     done
 
     echo "${bar}"
