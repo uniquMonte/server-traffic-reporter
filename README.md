@@ -108,12 +108,6 @@ Run manual report:
 - View jobs: `crontab -l`
 - Check logs: `cat data/cron.log`
 
-### Uninstall
-
-```bash
-./setup.sh  # Select option 6
-```
-
 ### License
 
 MIT License - see LICENSE file for details.
@@ -220,12 +214,6 @@ sudo bash install.sh
 - 检查服务：`systemctl status cron`
 - 查看任务：`crontab -l`
 - 检查日志：`cat data/cron.log`
-
-### 卸载
-
-```bash
-./setup.sh  # 选择选项 6
-```
 
 ### 许可证
 
