@@ -292,11 +292,15 @@ get_days_since_reset() {
 
     local days_diff=$(( (today_timestamp - reset_timestamp) / 86400 ))
 
-    # Return at least 1 day to avoid division by zero
-    if [ "${days_diff}" -lt 1 ]; then
+    # Add 1 to convert from "days elapsed" to "day number"
+    # Reset day = Day 1, next day = Day 2, etc.
+    local day_number=$((days_diff + 1))
+
+    # Return at least 1
+    if [ "${day_number}" -lt 1 ]; then
         echo "1"
     else
-        echo "${days_diff}"
+        echo "${day_number}"
     fi
 }
 
