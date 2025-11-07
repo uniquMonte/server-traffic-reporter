@@ -320,7 +320,7 @@ get_traffic_status() {
 
     # Avoid division by zero
     if [ "${average_bytes}" -eq 0 ] || [ "${daily_bytes}" -eq 0 ]; then
-        echo "normal|流量正常|✅"
+        echo "normal|Normal|✅"
         return
     fi
 
@@ -329,13 +329,13 @@ get_traffic_status() {
 
     # Determine status based on ratio
     if (( $(echo "${ratio} >= 3.0" | bc -l) )); then
-        echo "critical|流量异常|🔴"
+        echo "critical|Critical|🔴"
     elif (( $(echo "${ratio} >= 2.0" | bc -l) )); then
-        echo "high|流量较高|⚠️"
+        echo "high|High|⚠️"
     elif (( $(echo "${ratio} < 0.5" | bc -l) )); then
-        echo "low|流量偏低|🟢"
+        echo "low|Low|🟢"
     else
-        echo "normal|流量正常|✅"
+        echo "normal|Normal|✅"
     fi
 }
 
@@ -431,14 +431,14 @@ send_daily_report() {
 
     # Add warning if daily usage is critical
     if [ "${status_code}" == "critical" ]; then
-        message="${message}\n\n⚠️ *警告:* 今日流量异常偏高！"
+        message="${message}\n\n⚠️ *WARNING:* Today's traffic is abnormally high!"
     elif [ "${status_code}" == "high" ]; then
-        message="${message}\n\n💡 *提示:* 今日流量较高，请注意。"
+        message="${message}\n\n💡 *NOTICE:* Today's traffic is higher than usual."
     fi
 
     # Add warning if cycle usage is high
     if (( $(echo "${percentage} >= 90" | bc -l) )); then
-        message="${message}\n⚠️ *WARNING:* 月流量接近上限！"
+        message="${message}\n⚠️ *WARNING:* Monthly traffic approaching limit!"
     fi
 
     # Send notification
