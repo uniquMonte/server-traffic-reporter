@@ -54,6 +54,18 @@ get_current_traffic() {
     echo "${total_bytes}"
 }
 
+# Function to get detailed traffic (returns rx and tx separately)
+# Output format: "rx_bytes tx_bytes"
+get_current_traffic_detailed() {
+    local interface="$1"
+
+    # Get received and transmitted bytes
+    local rx_bytes=$(cat /sys/class/net/${interface}/statistics/rx_bytes 2>/dev/null || echo 0)
+    local tx_bytes=$(cat /sys/class/net/${interface}/statistics/tx_bytes 2>/dev/null || echo 0)
+
+    echo "${rx_bytes} ${tx_bytes}"
+}
+
 # Function to convert bytes to human readable format
 bytes_to_human() {
     local bytes=$1
@@ -79,7 +91,7 @@ bytes_to_gb() {
 init_traffic_db() {
     if [ ! -f "${TRAFFIC_DATA_FILE}" ]; then
         echo "# Traffic Database" > "${TRAFFIC_DATA_FILE}"
-        echo "# Format: DATE|DAILY_BYTES|CUMULATIVE_BYTES|RESET_PERIOD" >> "${TRAFFIC_DATA_FILE}"
+        echo "# Format: DATE|DAILY_BYTES|CUMULATIVE_BYTES|DAILY_RX|DAILY_TX|CUMULATIVE_RX|CUMULATIVE_TX|baseline_rx=RX|baseline_tx=TX" >> "${TRAFFIC_DATA_FILE}"
 
         # For first-time initialization, use TODAY as the reset date
         # This is more intuitive for new VPS deployments
@@ -91,8 +103,10 @@ init_traffic_db() {
         echo "RESET|${today}|0|${current_month}" >> "${TRAFFIC_DATA_FILE}"
 
         # Record baseline for current traffic measurement
-        local current_traffic=$(get_current_traffic "${NETWORK_INTERFACE}")
-        echo "${today}|0|0|baseline=${current_traffic}" >> "${TRAFFIC_DATA_FILE}"
+        local current_traffic=$(get_current_traffic_detailed "${NETWORK_INTERFACE}")
+        local rx_bytes=$(echo "${current_traffic}" | awk '{print $1}')
+        local tx_bytes=$(echo "${current_traffic}" | awk '{print $2}')
+        echo "${today}|0|0|0|0|0|0|baseline_rx=${rx_bytes}|baseline_tx=${tx_bytes}" >> "${TRAFFIC_DATA_FILE}"
 
         echo "Initialized traffic database with reset date: ${today} (first run)"
         echo "Future resets will occur on day ${TRAFFIC_RESET_DAY} of each month"
@@ -162,26 +176,95 @@ reset_traffic() {
 
     # Create new database with reset marker
     echo "# Traffic Database - Reset on ${reset_date}" > "${TRAFFIC_DATA_FILE}"
-    echo "# Format: DATE|DAILY_BYTES|CUMULATIVE_BYTES|RESET_PERIOD" >> "${TRAFFIC_DATA_FILE}"
+    echo "# Format: DATE|DAILY_BYTES|CUMULATIVE_BYTES|DAILY_RX|DAILY_TX|CUMULATIVE_RX|CUMULATIVE_TX|baseline_rx=RX|baseline_tx=TX" >> "${TRAFFIC_DATA_FILE}"
     echo "RESET|${reset_date}|0|$(date +%Y-%m)" >> "${TRAFFIC_DATA_FILE}"
 
     # Record the baseline traffic
-    local current_traffic=$(get_current_traffic "${NETWORK_INTERFACE}")
-    echo "$(date +%Y-%m-%d)|0|0|baseline=${current_traffic}" >> "${TRAFFIC_DATA_FILE}"
+    local current_traffic=$(get_current_traffic_detailed "${NETWORK_INTERFACE}")
+    local rx_bytes=$(echo "${current_traffic}" | awk '{print $1}')
+    local tx_bytes=$(echo "${current_traffic}" | awk '{print $2}')
+    echo "$(date +%Y-%m-%d)|0|0|0|0|0|0|baseline_rx=${rx_bytes}|baseline_tx=${tx_bytes}" >> "${TRAFFIC_DATA_FILE}"
 
     echo "Traffic counter reset for new billing cycle starting ${reset_date}"
 }
 
 # Function to get baseline traffic (traffic at last measurement)
 get_baseline() {
-    local baseline=$(grep -v "^#" "${TRAFFIC_DATA_FILE}" 2>/dev/null | grep "baseline=" | tail -1 | sed 's/.*baseline=//' 2>/dev/null || echo "0")
+    local last_line=$(grep -v "^#" "${TRAFFIC_DATA_FILE}" 2>/dev/null | tail -1)
 
-    # Validate that baseline is a valid number
-    if ! [[ "${baseline}" =~ ^[0-9]+$ ]]; then
-        baseline=0
+    # Try to extract baseline_rx and baseline_tx from new format
+    local rx_baseline=$(echo "${last_line}" | sed -n 's/.*baseline_rx=\([0-9]*\).*/\1/p' 2>/dev/null || echo "")
+    local tx_baseline=$(echo "${last_line}" | sed -n 's/.*baseline_tx=\([0-9]*\).*/\1/p' 2>/dev/null || echo "")
+
+    # If new format exists, calculate baseline based on TRAFFIC_DIRECTION
+    if [ -n "${rx_baseline}" ] && [ -n "${tx_baseline}" ]; then
+        # Validate that baselines are valid numbers
+        if ! [[ "${rx_baseline}" =~ ^[0-9]+$ ]]; then
+            rx_baseline=0
+        fi
+        if ! [[ "${tx_baseline}" =~ ^[0-9]+$ ]]; then
+            tx_baseline=0
+        fi
+
+        local baseline=0
+        case "${TRAFFIC_DIRECTION:-1}" in
+            1)
+                # Bidirectional
+                baseline=$((rx_baseline + tx_baseline))
+                ;;
+            2)
+                # Outbound only (tx)
+                baseline=${tx_baseline}
+                ;;
+            3)
+                # Inbound only (rx)
+                baseline=${rx_baseline}
+                ;;
+            *)
+                # Default to bidirectional
+                baseline=$((rx_baseline + tx_baseline))
+                ;;
+        esac
+        echo "${baseline}"
+    else
+        # Fall back to old format (baseline=)
+        local baseline=$(echo "${last_line}" | sed 's/.*baseline=//' 2>/dev/null || echo "0")
+
+        # Validate that baseline is a valid number
+        if ! [[ "${baseline}" =~ ^[0-9]+$ ]]; then
+            baseline=0
+        fi
+
+        echo "${baseline}"
+    fi
+}
+
+# Function to get detailed baseline traffic (returns rx and tx separately)
+# Output format: "rx_baseline tx_baseline"
+get_baseline_detailed() {
+    local last_line=$(grep -v "^#" "${TRAFFIC_DATA_FILE}" 2>/dev/null | tail -1)
+
+    # Try to extract baseline_rx and baseline_tx from new format
+    local rx_baseline=$(echo "${last_line}" | sed -n 's/.*baseline_rx=\([0-9]*\).*/\1/p' 2>/dev/null || echo "")
+    local tx_baseline=$(echo "${last_line}" | sed -n 's/.*baseline_tx=\([0-9]*\).*/\1/p' 2>/dev/null || echo "")
+
+    # If new format doesn't exist, fall back to old format (baseline= is total)
+    if [ -z "${rx_baseline}" ] || [ -z "${tx_baseline}" ]; then
+        local old_baseline=$(echo "${last_line}" | sed 's/.*baseline=//' 2>/dev/null || echo "0")
+        # For old format, we can't distinguish rx/tx, so return 0 0
+        rx_baseline="0"
+        tx_baseline="0"
     fi
 
-    echo "${baseline}"
+    # Validate that baselines are valid numbers
+    if ! [[ "${rx_baseline}" =~ ^[0-9]+$ ]]; then
+        rx_baseline=0
+    fi
+    if ! [[ "${tx_baseline}" =~ ^[0-9]+$ ]]; then
+        tx_baseline=0
+    fi
+
+    echo "${rx_baseline} ${tx_baseline}"
 }
 
 # Function to get cumulative traffic for current period
@@ -201,6 +284,53 @@ get_cumulative_traffic() {
     fi
 
     echo "${cumulative}"
+}
+
+# Function to get cumulative traffic with detailed rx/tx breakdown
+# Output format: "cumulative_rx cumulative_tx"
+get_cumulative_traffic_detailed() {
+    local baselines=$(get_baseline_detailed)
+    local rx_baseline=$(echo "${baselines}" | awk '{print $1}')
+    local tx_baseline=$(echo "${baselines}" | awk '{print $2}')
+
+    local current=$(get_current_traffic_detailed "${NETWORK_INTERFACE}")
+    local rx_current=$(echo "${current}" | awk '{print $1}')
+    local tx_current=$(echo "${current}" | awk '{print $2}')
+
+    # Get last cumulative values from database
+    local last_line=$(grep -v "^#" "${TRAFFIC_DATA_FILE}" | grep -v "RESET" | tail -1)
+    local last_cumulative_rx=$(echo "${last_line}" | cut -d'|' -f6 2>/dev/null || echo "0")
+    local last_cumulative_tx=$(echo "${last_line}" | cut -d'|' -f7 2>/dev/null || echo "0")
+
+    # Validate numbers
+    if ! [[ "${last_cumulative_rx}" =~ ^[0-9]+$ ]]; then
+        last_cumulative_rx=0
+    fi
+    if ! [[ "${last_cumulative_tx}" =~ ^[0-9]+$ ]]; then
+        last_cumulative_tx=0
+    fi
+
+    local cumulative_rx=0
+    local cumulative_tx=0
+
+    # If current < baseline, interface was reset (server reboot)
+    # Calculate for rx
+    if [ "${rx_current}" -lt "${rx_baseline}" ] 2>/dev/null; then
+        cumulative_rx=$((last_cumulative_rx + rx_current))
+    else
+        local diff_rx=$((rx_current - rx_baseline))
+        cumulative_rx=$((last_cumulative_rx + diff_rx))
+    fi
+
+    # Calculate for tx
+    if [ "${tx_current}" -lt "${tx_baseline}" ] 2>/dev/null; then
+        cumulative_tx=$((last_cumulative_tx + tx_current))
+    else
+        local diff_tx=$((tx_current - tx_baseline))
+        cumulative_tx=$((last_cumulative_tx + diff_tx))
+    fi
+
+    echo "${cumulative_rx} ${cumulative_tx}"
 }
 
 # Function to get today's traffic
@@ -239,6 +369,65 @@ get_daily_traffic() {
     fi
 
     echo "${daily}"
+}
+
+# Function to get today's traffic with detailed rx/tx breakdown
+# Output format: "daily_rx daily_tx"
+get_daily_traffic_detailed() {
+    local today=$(date +%Y-%m-%d)
+    local current_cumulative=$(get_cumulative_traffic_detailed)
+    local current_cumulative_rx=$(echo "${current_cumulative}" | awk '{print $1}')
+    local current_cumulative_tx=$(echo "${current_cumulative}" | awk '{print $2}')
+
+    # Find today's starting cumulative (first entry of today, or last entry of yesterday)
+    local today_start_cumulative_rx=0
+    local today_start_cumulative_tx=0
+
+    # Check if there's any entry for today already
+    local today_first_entry=$(grep -v "^#" "${TRAFFIC_DATA_FILE}" | grep "^${today}|" | head -1)
+
+    if [ -n "${today_first_entry}" ]; then
+        # Today has entries, get the cumulative from yesterday's last entry
+        local yesterday=$(date -d "${today} -1 day" +%Y-%m-%d 2>/dev/null || date -d "yesterday" +%Y-%m-%d)
+        local yesterday_last=$(grep -v "^#" "${TRAFFIC_DATA_FILE}" | grep "^${yesterday}|" | tail -1)
+
+        if [ -n "${yesterday_last}" ]; then
+            today_start_cumulative_rx=$(echo "${yesterday_last}" | cut -d'|' -f6 2>/dev/null || echo "0")
+            today_start_cumulative_tx=$(echo "${yesterday_last}" | cut -d'|' -f7 2>/dev/null || echo "0")
+        else
+            # No yesterday entry, use the last non-today entry
+            local last_non_today=$(grep -v "^#" "${TRAFFIC_DATA_FILE}" | grep -v "^${today}|" | grep -v "RESET" | tail -1)
+            today_start_cumulative_rx=$(echo "${last_non_today}" | cut -d'|' -f6 2>/dev/null || echo "0")
+            today_start_cumulative_tx=$(echo "${last_non_today}" | cut -d'|' -f7 2>/dev/null || echo "0")
+        fi
+    else
+        # No entry for today yet, use last entry's cumulative as starting point
+        local last_entry=$(grep -v "^#" "${TRAFFIC_DATA_FILE}" | grep -v "RESET" | tail -1)
+        today_start_cumulative_rx=$(echo "${last_entry}" | cut -d'|' -f6 2>/dev/null || echo "0")
+        today_start_cumulative_tx=$(echo "${last_entry}" | cut -d'|' -f7 2>/dev/null || echo "0")
+    fi
+
+    # Validate numbers
+    if ! [[ "${today_start_cumulative_rx}" =~ ^[0-9]+$ ]]; then
+        today_start_cumulative_rx=0
+    fi
+    if ! [[ "${today_start_cumulative_tx}" =~ ^[0-9]+$ ]]; then
+        today_start_cumulative_tx=0
+    fi
+
+    # Calculate today's usage
+    local daily_rx=$((current_cumulative_rx - today_start_cumulative_rx))
+    local daily_tx=$((current_cumulative_tx - today_start_cumulative_tx))
+
+    # If daily is negative, something is wrong (reset, etc.)
+    if [ "${daily_rx}" -lt 0 ] 2>/dev/null; then
+        daily_rx=0
+    fi
+    if [ "${daily_tx}" -lt 0 ] 2>/dev/null; then
+        daily_tx=0
+    fi
+
+    echo "${daily_rx} ${daily_tx}"
 }
 
 # Function to calculate percentage
@@ -350,9 +539,22 @@ send_daily_report() {
     local daily_bytes=$(get_daily_traffic)
     local cumulative_bytes=$(get_cumulative_traffic)
 
+    # Get detailed traffic data (rx/tx breakdown)
+    local daily_detailed=$(get_daily_traffic_detailed)
+    local daily_rx=$(echo "${daily_detailed}" | awk '{print $1}')
+    local daily_tx=$(echo "${daily_detailed}" | awk '{print $2}')
+
+    local cumulative_detailed=$(get_cumulative_traffic_detailed)
+    local cumulative_rx=$(echo "${cumulative_detailed}" | awk '{print $1}')
+    local cumulative_tx=$(echo "${cumulative_detailed}" | awk '{print $2}')
+
     # Convert to GB
     local daily_gb=$(bytes_to_gb ${daily_bytes})
     local cumulative_gb=$(bytes_to_gb ${cumulative_bytes})
+    local daily_rx_gb=$(bytes_to_gb ${daily_rx})
+    local daily_tx_gb=$(bytes_to_gb ${daily_tx})
+    local cumulative_rx_gb=$(bytes_to_gb ${cumulative_rx})
+    local cumulative_tx_gb=$(bytes_to_gb ${cumulative_tx})
     local limit_gb=${MONTHLY_TRAFFIC_LIMIT}
 
     # Calculate percentage
@@ -433,11 +635,47 @@ send_daily_report() {
     local message="📊 *Daily Traffic Report*\n🖥️ ${SERVER_NAME}\n\n"
     message="${message}📈 *Today's Usage*\n"
     message="${message}├  Usage: ${daily_gb} GB\n"
+
+    # Add detailed upload/download breakdown based on TRAFFIC_DIRECTION
+    case "${TRAFFIC_DIRECTION:-1}" in
+        1)
+            # Bidirectional - show both upload and download
+            message="${message}│  ├ ⬇️ Download: ${daily_rx_gb} GB\n"
+            message="${message}│  └ ⬆️ Upload: ${daily_tx_gb} GB\n"
+            ;;
+        2)
+            # Outbound only (upload/tx)
+            message="${message}│  └ ⬆️ Upload: ${daily_tx_gb} GB\n"
+            ;;
+        3)
+            # Inbound only (download/rx)
+            message="${message}│  └ ⬇️ Download: ${daily_rx_gb} GB\n"
+            ;;
+    esac
+
     message="${message}├  Average: ${average_gb} GB\n"
     message="${message}└  Status: ${ratio}x avg ${status_emoji} ${status_text}\n\n"
     message="${message}💳 *Billing Cycle*\n"
     message="${message}├  Limit: ${limit_gb} GB\n"
     message="${message}├  Used: ${cumulative_gb} GB\n"
+
+    # Add detailed upload/download breakdown for billing cycle
+    case "${TRAFFIC_DIRECTION:-1}" in
+        1)
+            # Bidirectional - show both upload and download
+            message="${message}│  ├ ⬇️ Download: ${cumulative_rx_gb} GB\n"
+            message="${message}│  └ ⬆️ Upload: ${cumulative_tx_gb} GB\n"
+            ;;
+        2)
+            # Outbound only (upload/tx)
+            message="${message}│  └ ⬆️ Upload: ${cumulative_tx_gb} GB\n"
+            ;;
+        3)
+            # Inbound only (download/rx)
+            message="${message}│  └ ⬇️ Download: ${cumulative_rx_gb} GB\n"
+            ;;
+    esac
+
     message="${message}└  ${progress_bar} ${percentage}%\n\n"
     message="${message}🔄 *Cycle Info*\n"
     message="${message}├  Days: ${days_since_reset} / $((days_since_reset + days_until_reset)) (${days_until_reset} remaining)\n"
@@ -460,38 +698,325 @@ send_daily_report() {
 
     # Record today's data
     local today=$(date +%Y-%m-%d)
-    local baseline=$(get_current_traffic "${NETWORK_INTERFACE}")
-    echo "${today}|${daily_bytes}|${cumulative_bytes}|baseline=${baseline}" >> "${TRAFFIC_DATA_FILE}"
+    local current_traffic=$(get_current_traffic_detailed "${NETWORK_INTERFACE}")
+    local baseline_rx=$(echo "${current_traffic}" | awk '{print $1}')
+    local baseline_tx=$(echo "${current_traffic}" | awk '{print $2}')
+    echo "${today}|${daily_bytes}|${cumulative_bytes}|${daily_rx}|${daily_tx}|${cumulative_rx}|${cumulative_tx}|baseline_rx=${baseline_rx}|baseline_tx=${baseline_tx}" >> "${TRAFFIC_DATA_FILE}"
 }
 
-# Main function
-main() {
-    local mode="${1:-daily}"
+# Function to show interactive menu
+show_menu() {
+    echo ""
+    echo "=========================================="
+    echo "   📊 Traffic Monitor - Control Panel"
+    echo "=========================================="
+    echo ""
+    echo "1) 📈 Send Daily Report (Normal Run)"
+    echo "2) 🔄 Manual Reset Database"
+    echo "3) 📊 View Current Statistics"
+    echo "4) 📁 Show Database Content"
+    echo "5) 🔍 Test Configuration"
+    echo "0) ❌ Exit"
+    echo ""
+    echo "=========================================="
+    echo -n "Please select an option [0-5]: "
+}
+
+# Function to view current statistics
+view_statistics() {
+    echo ""
+    echo "=========================================="
+    echo "   📊 Current Traffic Statistics"
+    echo "=========================================="
+    echo ""
 
     # Initialize database if needed
     init_traffic_db
 
-    # Check if we need to reset for new billing cycle
-    if need_reset; then
-        echo "New billing cycle detected. Resetting traffic counter..."
-        reset_traffic
+    local daily_bytes=$(get_daily_traffic)
+    local cumulative_bytes=$(get_cumulative_traffic)
 
-        # Send reset notification
-        local message="🔄 *Traffic Counter Reset*\n\n"
-        message="${message}New billing cycle started on $(date +%Y-%m-%d)\n\n"
-        message="${message}Monthly limit: ${MONTHLY_TRAFFIC_LIMIT} GB\n"
-        message="${message}Reset day: ${TRAFFIC_RESET_DAY} of each month"
+    local daily_detailed=$(get_daily_traffic_detailed)
+    local daily_rx=$(echo "${daily_detailed}" | awk '{print $1}')
+    local daily_tx=$(echo "${daily_detailed}" | awk '{print $2}')
 
-        "${SCRIPT_DIR}/telegram_notify.sh" "🔄 Billing Cycle Reset" "${message}"
+    local cumulative_detailed=$(get_cumulative_traffic_detailed)
+    local cumulative_rx=$(echo "${cumulative_detailed}" | awk '{print $1}')
+    local cumulative_tx=$(echo "${cumulative_detailed}" | awk '{print $2}')
+
+    local daily_gb=$(bytes_to_gb ${daily_bytes})
+    local cumulative_gb=$(bytes_to_gb ${cumulative_bytes})
+    local daily_rx_gb=$(bytes_to_gb ${daily_rx})
+    local daily_tx_gb=$(bytes_to_gb ${daily_tx})
+    local cumulative_rx_gb=$(bytes_to_gb ${cumulative_rx})
+    local cumulative_tx_gb=$(bytes_to_gb ${cumulative_tx})
+
+    local percentage=$(calculate_percentage ${cumulative_gb} ${MONTHLY_TRAFFIC_LIMIT})
+    local progress_bar=$(get_progress_bar ${percentage})
+
+    echo "📈 Today's Usage:"
+    echo "   Total: ${daily_gb} GB"
+    echo "   ⬇️  Download: ${daily_rx_gb} GB"
+    echo "   ⬆️  Upload: ${daily_tx_gb} GB"
+    echo ""
+    echo "💳 Billing Cycle:"
+    echo "   Limit: ${MONTHLY_TRAFFIC_LIMIT} GB"
+    echo "   Used: ${cumulative_gb} GB (${percentage}%)"
+    echo "   ⬇️  Download: ${cumulative_rx_gb} GB"
+    echo "   ⬆️  Upload: ${cumulative_tx_gb} GB"
+    echo "   ${progress_bar}"
+    echo ""
+    echo "=========================================="
+    echo ""
+}
+
+# Function to show database content
+show_database() {
+    echo ""
+    echo "=========================================="
+    echo "   📁 Database Content"
+    echo "=========================================="
+    echo ""
+
+    if [ -f "${TRAFFIC_DATA_FILE}" ]; then
+        echo "File: ${TRAFFIC_DATA_FILE}"
+        echo "Size: $(ls -lh ${TRAFFIC_DATA_FILE} | awk '{print $5}')"
+        echo ""
+        echo "Content (last 10 lines):"
+        echo "------------------------------------------"
+        tail -10 "${TRAFFIC_DATA_FILE}"
+        echo "------------------------------------------"
+    else
+        echo "❌ Database file not found: ${TRAFFIC_DATA_FILE}"
+    fi
+    echo ""
+    echo "=========================================="
+    echo ""
+}
+
+# Function to test configuration
+test_configuration() {
+    echo ""
+    echo "=========================================="
+    echo "   🔍 Configuration Test"
+    echo "=========================================="
+    echo ""
+
+    echo "✓ Checking configuration..."
+    echo "  Server Name: ${SERVER_NAME}"
+    echo "  Network Interface: ${NETWORK_INTERFACE}"
+    echo "  Traffic Direction: ${TRAFFIC_DIRECTION} (1=Both, 2=Upload, 3=Download)"
+    echo "  Monthly Limit: ${MONTHLY_TRAFFIC_LIMIT} GB"
+    echo "  Reset Day: ${TRAFFIC_RESET_DAY}"
+    echo ""
+
+    echo "✓ Checking network interface..."
+    if [ -d "/sys/class/net/${NETWORK_INTERFACE}" ]; then
+        echo "  ✅ Interface ${NETWORK_INTERFACE} exists"
+        local current=$(get_current_traffic_detailed "${NETWORK_INTERFACE}")
+        local rx=$(echo "${current}" | awk '{print $1}')
+        local tx=$(echo "${current}" | awk '{print $2}')
+        echo "  Current RX: $(bytes_to_gb ${rx}) GB"
+        echo "  Current TX: $(bytes_to_gb ${tx}) GB"
+    else
+        echo "  ❌ Interface ${NETWORK_INTERFACE} not found!"
+        echo "  Available interfaces:"
+        ls /sys/class/net/ | sed 's/^/    - /'
+    fi
+    echo ""
+
+    echo "✓ Checking Telegram configuration..."
+    if [ -n "${BOT_TOKEN}" ] && [ -n "${CHAT_ID}" ]; then
+        echo "  ✅ Bot Token: ${BOT_TOKEN:0:10}...${BOT_TOKEN: -5}"
+        echo "  ✅ Chat ID: ${CHAT_ID}"
+    else
+        echo "  ❌ Telegram Bot Token or Chat ID not configured!"
+    fi
+    echo ""
+
+    echo "✓ Checking database..."
+    if [ -f "${TRAFFIC_DATA_FILE}" ]; then
+        echo "  ✅ Database exists: ${TRAFFIC_DATA_FILE}"
+        local last_line=$(tail -1 "${TRAFFIC_DATA_FILE}")
+        if echo "${last_line}" | grep -q "baseline_rx="; then
+            echo "  ✅ Using new detailed format (with RX/TX breakdown)"
+        else
+            echo "  ⚠️  Using old format (consider resetting for detailed stats)"
+        fi
+    else
+        echo "  ⚠️  Database not initialized (will be created on first run)"
+    fi
+    echo ""
+
+    echo "=========================================="
+    echo ""
+}
+
+# Function to manually reset database with confirmation
+manual_reset_database() {
+    echo ""
+    echo "=========================================="
+    echo "   🔄 Manual Database Reset"
+    echo "=========================================="
+    echo ""
+    echo "⚠️  WARNING: This will:"
+    echo "   • Backup current database"
+    echo "   • Delete all traffic history"
+    echo "   • Reset cumulative traffic to 0"
+    echo "   • Initialize new database with detailed format"
+    echo ""
+
+    if [ -f "${TRAFFIC_DATA_FILE}" ]; then
+        echo "Current database info:"
+        echo "  File: ${TRAFFIC_DATA_FILE}"
+        echo "  Size: $(ls -lh ${TRAFFIC_DATA_FILE} | awk '{print $5}')"
+        echo "  Lines: $(wc -l < ${TRAFFIC_DATA_FILE})"
+        echo ""
     fi
 
-    # Send daily report
-    send_daily_report
+    echo -n "Are you sure you want to reset? (yes/no): "
+    read confirmation
 
-    # Update last run time
-    date +%s > "${LAST_RUN_FILE}"
+    if [ "${confirmation}" != "yes" ]; then
+        echo ""
+        echo "❌ Reset cancelled."
+        echo ""
+        return
+    fi
 
-    echo "Traffic report sent successfully at $(date)"
+    echo ""
+    echo "🔄 Resetting database..."
+
+    # Backup old database
+    if [ -f "${TRAFFIC_DATA_FILE}" ]; then
+        local backup_file="${TRAFFIC_DATA_FILE}.backup.$(date +%Y%m%d_%H%M%S)"
+        cp "${TRAFFIC_DATA_FILE}" "${backup_file}"
+        echo "✓ Backup created: ${backup_file}"
+    fi
+
+    # Delete old database
+    rm -f "${TRAFFIC_DATA_FILE}"
+    echo "✓ Old database deleted"
+
+    # Initialize new database
+    init_traffic_db
+    echo "✓ New database initialized with detailed format"
+
+    echo ""
+    echo "✅ Database reset complete!"
+    echo ""
+    echo "New database content:"
+    echo "------------------------------------------"
+    cat "${TRAFFIC_DATA_FILE}"
+    echo "------------------------------------------"
+    echo ""
+
+    # Send notification
+    local message="🔄 *Manual Database Reset*\n\n"
+    message="${message}Database has been manually reset by administrator.\n\n"
+    message="${message}Reset date: $(date +%Y-%m-%d)\n"
+    message="${message}Monthly limit: ${MONTHLY_TRAFFIC_LIMIT} GB\n"
+    message="${message}Format: Detailed with RX/TX breakdown"
+
+    "${SCRIPT_DIR}/telegram_notify.sh" "🔄 Database Reset" "${message}"
+    echo "✓ Notification sent to Telegram"
+    echo ""
+}
+
+# Main function
+main() {
+    local mode="${1:-menu}"
+
+    # If running from cron (with "daily" argument), skip menu
+    if [ "${mode}" = "daily" ] || [ "${mode}" = "auto" ]; then
+        # Initialize database if needed
+        init_traffic_db
+
+        # Check if we need to reset for new billing cycle
+        if need_reset; then
+            echo "New billing cycle detected. Resetting traffic counter..."
+            reset_traffic
+
+            # Send reset notification
+            local message="🔄 *Traffic Counter Reset*\n\n"
+            message="${message}New billing cycle started on $(date +%Y-%m-%d)\n\n"
+            message="${message}Monthly limit: ${MONTHLY_TRAFFIC_LIMIT} GB\n"
+            message="${message}Reset day: ${TRAFFIC_RESET_DAY} of each month"
+
+            "${SCRIPT_DIR}/telegram_notify.sh" "🔄 Billing Cycle Reset" "${message}"
+        fi
+
+        # Send daily report
+        send_daily_report
+
+        # Update last run time
+        date +%s > "${LAST_RUN_FILE}"
+
+        echo "Traffic report sent successfully at $(date)"
+        return
+    fi
+
+    # Interactive menu mode
+    while true; do
+        show_menu
+        read choice
+
+        case "${choice}" in
+            1)
+                echo ""
+                echo "📈 Sending daily report..."
+                init_traffic_db
+
+                if need_reset; then
+                    echo "⚠️  New billing cycle detected. Resetting traffic counter..."
+                    reset_traffic
+
+                    local message="🔄 *Traffic Counter Reset*\n\n"
+                    message="${message}New billing cycle started on $(date +%Y-%m-%d)\n\n"
+                    message="${message}Monthly limit: ${MONTHLY_TRAFFIC_LIMIT} GB\n"
+                    message="${message}Reset day: ${TRAFFIC_RESET_DAY} of each month"
+
+                    "${SCRIPT_DIR}/telegram_notify.sh" "🔄 Billing Cycle Reset" "${message}"
+                fi
+
+                send_daily_report
+                date +%s > "${LAST_RUN_FILE}"
+
+                echo ""
+                echo "✅ Daily report sent successfully!"
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            2)
+                manual_reset_database
+                read -p "Press Enter to continue..."
+                ;;
+            3)
+                view_statistics
+                read -p "Press Enter to continue..."
+                ;;
+            4)
+                show_database
+                read -p "Press Enter to continue..."
+                ;;
+            5)
+                test_configuration
+                read -p "Press Enter to continue..."
+                ;;
+            0)
+                echo ""
+                echo "👋 Goodbye!"
+                echo ""
+                exit 0
+                ;;
+            *)
+                echo ""
+                echo "❌ Invalid option. Please select 0-5."
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+        esac
+    done
 }
 
 # Run main function
