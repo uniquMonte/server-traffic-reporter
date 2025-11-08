@@ -655,7 +655,7 @@ send_daily_report() {
 
     message="${message}  ├ Average: ${average_gb} GB\n"
     message="${message}  └ Status: ${ratio}x avg ${status_emoji} ${status_text}\n\n"
-    message="${message}📅 *Cycle Total*\n"
+    message="${message}🎯 *Cycle Total*\n"
     message="${message}  ├ 💎 Used: *${cumulative_gb} GB*\n"
 
     # Add detailed upload/download breakdown for billing cycle
