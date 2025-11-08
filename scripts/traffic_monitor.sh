@@ -704,34 +704,319 @@ send_daily_report() {
     echo "${today}|${daily_bytes}|${cumulative_bytes}|${daily_rx}|${daily_tx}|${cumulative_rx}|${cumulative_tx}|baseline_rx=${baseline_rx}|baseline_tx=${baseline_tx}" >> "${TRAFFIC_DATA_FILE}"
 }
 
-# Main function
-main() {
-    local mode="${1:-daily}"
+# Function to show interactive menu
+show_menu() {
+    echo ""
+    echo "=========================================="
+    echo "   📊 Traffic Monitor - Control Panel"
+    echo "=========================================="
+    echo ""
+    echo "1) 📈 Send Daily Report (Normal Run)"
+    echo "2) 🔄 Manual Reset Database"
+    echo "3) 📊 View Current Statistics"
+    echo "4) 📁 Show Database Content"
+    echo "5) 🔍 Test Configuration"
+    echo "0) ❌ Exit"
+    echo ""
+    echo "=========================================="
+    echo -n "Please select an option [0-5]: "
+}
+
+# Function to view current statistics
+view_statistics() {
+    echo ""
+    echo "=========================================="
+    echo "   📊 Current Traffic Statistics"
+    echo "=========================================="
+    echo ""
 
     # Initialize database if needed
     init_traffic_db
 
-    # Check if we need to reset for new billing cycle
-    if need_reset; then
-        echo "New billing cycle detected. Resetting traffic counter..."
-        reset_traffic
+    local daily_bytes=$(get_daily_traffic)
+    local cumulative_bytes=$(get_cumulative_traffic)
 
-        # Send reset notification
-        local message="🔄 *Traffic Counter Reset*\n\n"
-        message="${message}New billing cycle started on $(date +%Y-%m-%d)\n\n"
-        message="${message}Monthly limit: ${MONTHLY_TRAFFIC_LIMIT} GB\n"
-        message="${message}Reset day: ${TRAFFIC_RESET_DAY} of each month"
+    local daily_detailed=$(get_daily_traffic_detailed)
+    local daily_rx=$(echo "${daily_detailed}" | awk '{print $1}')
+    local daily_tx=$(echo "${daily_detailed}" | awk '{print $2}')
 
-        "${SCRIPT_DIR}/telegram_notify.sh" "🔄 Billing Cycle Reset" "${message}"
+    local cumulative_detailed=$(get_cumulative_traffic_detailed)
+    local cumulative_rx=$(echo "${cumulative_detailed}" | awk '{print $1}')
+    local cumulative_tx=$(echo "${cumulative_detailed}" | awk '{print $2}')
+
+    local daily_gb=$(bytes_to_gb ${daily_bytes})
+    local cumulative_gb=$(bytes_to_gb ${cumulative_bytes})
+    local daily_rx_gb=$(bytes_to_gb ${daily_rx})
+    local daily_tx_gb=$(bytes_to_gb ${daily_tx})
+    local cumulative_rx_gb=$(bytes_to_gb ${cumulative_rx})
+    local cumulative_tx_gb=$(bytes_to_gb ${cumulative_tx})
+
+    local percentage=$(calculate_percentage ${cumulative_gb} ${MONTHLY_TRAFFIC_LIMIT})
+    local progress_bar=$(get_progress_bar ${percentage})
+
+    echo "📈 Today's Usage:"
+    echo "   Total: ${daily_gb} GB"
+    echo "   ⬇️  Download: ${daily_rx_gb} GB"
+    echo "   ⬆️  Upload: ${daily_tx_gb} GB"
+    echo ""
+    echo "💳 Billing Cycle:"
+    echo "   Limit: ${MONTHLY_TRAFFIC_LIMIT} GB"
+    echo "   Used: ${cumulative_gb} GB (${percentage}%)"
+    echo "   ⬇️  Download: ${cumulative_rx_gb} GB"
+    echo "   ⬆️  Upload: ${cumulative_tx_gb} GB"
+    echo "   ${progress_bar}"
+    echo ""
+    echo "=========================================="
+    echo ""
+}
+
+# Function to show database content
+show_database() {
+    echo ""
+    echo "=========================================="
+    echo "   📁 Database Content"
+    echo "=========================================="
+    echo ""
+
+    if [ -f "${TRAFFIC_DATA_FILE}" ]; then
+        echo "File: ${TRAFFIC_DATA_FILE}"
+        echo "Size: $(ls -lh ${TRAFFIC_DATA_FILE} | awk '{print $5}')"
+        echo ""
+        echo "Content (last 10 lines):"
+        echo "------------------------------------------"
+        tail -10 "${TRAFFIC_DATA_FILE}"
+        echo "------------------------------------------"
+    else
+        echo "❌ Database file not found: ${TRAFFIC_DATA_FILE}"
+    fi
+    echo ""
+    echo "=========================================="
+    echo ""
+}
+
+# Function to test configuration
+test_configuration() {
+    echo ""
+    echo "=========================================="
+    echo "   🔍 Configuration Test"
+    echo "=========================================="
+    echo ""
+
+    echo "✓ Checking configuration..."
+    echo "  Server Name: ${SERVER_NAME}"
+    echo "  Network Interface: ${NETWORK_INTERFACE}"
+    echo "  Traffic Direction: ${TRAFFIC_DIRECTION} (1=Both, 2=Upload, 3=Download)"
+    echo "  Monthly Limit: ${MONTHLY_TRAFFIC_LIMIT} GB"
+    echo "  Reset Day: ${TRAFFIC_RESET_DAY}"
+    echo ""
+
+    echo "✓ Checking network interface..."
+    if [ -d "/sys/class/net/${NETWORK_INTERFACE}" ]; then
+        echo "  ✅ Interface ${NETWORK_INTERFACE} exists"
+        local current=$(get_current_traffic_detailed "${NETWORK_INTERFACE}")
+        local rx=$(echo "${current}" | awk '{print $1}')
+        local tx=$(echo "${current}" | awk '{print $2}')
+        echo "  Current RX: $(bytes_to_gb ${rx}) GB"
+        echo "  Current TX: $(bytes_to_gb ${tx}) GB"
+    else
+        echo "  ❌ Interface ${NETWORK_INTERFACE} not found!"
+        echo "  Available interfaces:"
+        ls /sys/class/net/ | sed 's/^/    - /'
+    fi
+    echo ""
+
+    echo "✓ Checking Telegram configuration..."
+    if [ -n "${BOT_TOKEN}" ] && [ -n "${CHAT_ID}" ]; then
+        echo "  ✅ Bot Token: ${BOT_TOKEN:0:10}...${BOT_TOKEN: -5}"
+        echo "  ✅ Chat ID: ${CHAT_ID}"
+    else
+        echo "  ❌ Telegram Bot Token or Chat ID not configured!"
+    fi
+    echo ""
+
+    echo "✓ Checking database..."
+    if [ -f "${TRAFFIC_DATA_FILE}" ]; then
+        echo "  ✅ Database exists: ${TRAFFIC_DATA_FILE}"
+        local last_line=$(tail -1 "${TRAFFIC_DATA_FILE}")
+        if echo "${last_line}" | grep -q "baseline_rx="; then
+            echo "  ✅ Using new detailed format (with RX/TX breakdown)"
+        else
+            echo "  ⚠️  Using old format (consider resetting for detailed stats)"
+        fi
+    else
+        echo "  ⚠️  Database not initialized (will be created on first run)"
+    fi
+    echo ""
+
+    echo "=========================================="
+    echo ""
+}
+
+# Function to manually reset database with confirmation
+manual_reset_database() {
+    echo ""
+    echo "=========================================="
+    echo "   🔄 Manual Database Reset"
+    echo "=========================================="
+    echo ""
+    echo "⚠️  WARNING: This will:"
+    echo "   • Backup current database"
+    echo "   • Delete all traffic history"
+    echo "   • Reset cumulative traffic to 0"
+    echo "   • Initialize new database with detailed format"
+    echo ""
+
+    if [ -f "${TRAFFIC_DATA_FILE}" ]; then
+        echo "Current database info:"
+        echo "  File: ${TRAFFIC_DATA_FILE}"
+        echo "  Size: $(ls -lh ${TRAFFIC_DATA_FILE} | awk '{print $5}')"
+        echo "  Lines: $(wc -l < ${TRAFFIC_DATA_FILE})"
+        echo ""
     fi
 
-    # Send daily report
-    send_daily_report
+    echo -n "Are you sure you want to reset? (yes/no): "
+    read confirmation
 
-    # Update last run time
-    date +%s > "${LAST_RUN_FILE}"
+    if [ "${confirmation}" != "yes" ]; then
+        echo ""
+        echo "❌ Reset cancelled."
+        echo ""
+        return
+    fi
 
-    echo "Traffic report sent successfully at $(date)"
+    echo ""
+    echo "🔄 Resetting database..."
+
+    # Backup old database
+    if [ -f "${TRAFFIC_DATA_FILE}" ]; then
+        local backup_file="${TRAFFIC_DATA_FILE}.backup.$(date +%Y%m%d_%H%M%S)"
+        cp "${TRAFFIC_DATA_FILE}" "${backup_file}"
+        echo "✓ Backup created: ${backup_file}"
+    fi
+
+    # Delete old database
+    rm -f "${TRAFFIC_DATA_FILE}"
+    echo "✓ Old database deleted"
+
+    # Initialize new database
+    init_traffic_db
+    echo "✓ New database initialized with detailed format"
+
+    echo ""
+    echo "✅ Database reset complete!"
+    echo ""
+    echo "New database content:"
+    echo "------------------------------------------"
+    cat "${TRAFFIC_DATA_FILE}"
+    echo "------------------------------------------"
+    echo ""
+
+    # Send notification
+    local message="🔄 *Manual Database Reset*\n\n"
+    message="${message}Database has been manually reset by administrator.\n\n"
+    message="${message}Reset date: $(date +%Y-%m-%d)\n"
+    message="${message}Monthly limit: ${MONTHLY_TRAFFIC_LIMIT} GB\n"
+    message="${message}Format: Detailed with RX/TX breakdown"
+
+    "${SCRIPT_DIR}/telegram_notify.sh" "🔄 Database Reset" "${message}"
+    echo "✓ Notification sent to Telegram"
+    echo ""
+}
+
+# Main function
+main() {
+    local mode="${1:-menu}"
+
+    # If running from cron (with "daily" argument), skip menu
+    if [ "${mode}" = "daily" ] || [ "${mode}" = "auto" ]; then
+        # Initialize database if needed
+        init_traffic_db
+
+        # Check if we need to reset for new billing cycle
+        if need_reset; then
+            echo "New billing cycle detected. Resetting traffic counter..."
+            reset_traffic
+
+            # Send reset notification
+            local message="🔄 *Traffic Counter Reset*\n\n"
+            message="${message}New billing cycle started on $(date +%Y-%m-%d)\n\n"
+            message="${message}Monthly limit: ${MONTHLY_TRAFFIC_LIMIT} GB\n"
+            message="${message}Reset day: ${TRAFFIC_RESET_DAY} of each month"
+
+            "${SCRIPT_DIR}/telegram_notify.sh" "🔄 Billing Cycle Reset" "${message}"
+        fi
+
+        # Send daily report
+        send_daily_report
+
+        # Update last run time
+        date +%s > "${LAST_RUN_FILE}"
+
+        echo "Traffic report sent successfully at $(date)"
+        return
+    fi
+
+    # Interactive menu mode
+    while true; do
+        show_menu
+        read choice
+
+        case "${choice}" in
+            1)
+                echo ""
+                echo "📈 Sending daily report..."
+                init_traffic_db
+
+                if need_reset; then
+                    echo "⚠️  New billing cycle detected. Resetting traffic counter..."
+                    reset_traffic
+
+                    local message="🔄 *Traffic Counter Reset*\n\n"
+                    message="${message}New billing cycle started on $(date +%Y-%m-%d)\n\n"
+                    message="${message}Monthly limit: ${MONTHLY_TRAFFIC_LIMIT} GB\n"
+                    message="${message}Reset day: ${TRAFFIC_RESET_DAY} of each month"
+
+                    "${SCRIPT_DIR}/telegram_notify.sh" "🔄 Billing Cycle Reset" "${message}"
+                fi
+
+                send_daily_report
+                date +%s > "${LAST_RUN_FILE}"
+
+                echo ""
+                echo "✅ Daily report sent successfully!"
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+            2)
+                manual_reset_database
+                read -p "Press Enter to continue..."
+                ;;
+            3)
+                view_statistics
+                read -p "Press Enter to continue..."
+                ;;
+            4)
+                show_database
+                read -p "Press Enter to continue..."
+                ;;
+            5)
+                test_configuration
+                read -p "Press Enter to continue..."
+                ;;
+            0)
+                echo ""
+                echo "👋 Goodbye!"
+                echo ""
+                exit 0
+                ;;
+            *)
+                echo ""
+                echo "❌ Invalid option. Please select 0-5."
+                echo ""
+                read -p "Press Enter to continue..."
+                ;;
+        esac
+    done
 }
 
 # Run main function
