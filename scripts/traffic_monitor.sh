@@ -190,14 +190,53 @@ reset_traffic() {
 
 # Function to get baseline traffic (traffic at last measurement)
 get_baseline() {
-    local baseline=$(grep -v "^#" "${TRAFFIC_DATA_FILE}" 2>/dev/null | grep "baseline=" | tail -1 | sed 's/.*baseline=//' 2>/dev/null || echo "0")
+    local last_line=$(grep -v "^#" "${TRAFFIC_DATA_FILE}" 2>/dev/null | tail -1)
 
-    # Validate that baseline is a valid number
-    if ! [[ "${baseline}" =~ ^[0-9]+$ ]]; then
-        baseline=0
+    # Try to extract baseline_rx and baseline_tx from new format
+    local rx_baseline=$(echo "${last_line}" | sed -n 's/.*baseline_rx=\([0-9]*\).*/\1/p' 2>/dev/null || echo "")
+    local tx_baseline=$(echo "${last_line}" | sed -n 's/.*baseline_tx=\([0-9]*\).*/\1/p' 2>/dev/null || echo "")
+
+    # If new format exists, calculate baseline based on TRAFFIC_DIRECTION
+    if [ -n "${rx_baseline}" ] && [ -n "${tx_baseline}" ]; then
+        # Validate that baselines are valid numbers
+        if ! [[ "${rx_baseline}" =~ ^[0-9]+$ ]]; then
+            rx_baseline=0
+        fi
+        if ! [[ "${tx_baseline}" =~ ^[0-9]+$ ]]; then
+            tx_baseline=0
+        fi
+
+        local baseline=0
+        case "${TRAFFIC_DIRECTION:-1}" in
+            1)
+                # Bidirectional
+                baseline=$((rx_baseline + tx_baseline))
+                ;;
+            2)
+                # Outbound only (tx)
+                baseline=${tx_baseline}
+                ;;
+            3)
+                # Inbound only (rx)
+                baseline=${rx_baseline}
+                ;;
+            *)
+                # Default to bidirectional
+                baseline=$((rx_baseline + tx_baseline))
+                ;;
+        esac
+        echo "${baseline}"
+    else
+        # Fall back to old format (baseline=)
+        local baseline=$(echo "${last_line}" | sed 's/.*baseline=//' 2>/dev/null || echo "0")
+
+        # Validate that baseline is a valid number
+        if ! [[ "${baseline}" =~ ^[0-9]+$ ]]; then
+            baseline=0
+        fi
+
+        echo "${baseline}"
     fi
-
-    echo "${baseline}"
 }
 
 # Function to get detailed baseline traffic (returns rx and tx separately)
