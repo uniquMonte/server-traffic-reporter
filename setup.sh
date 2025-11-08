@@ -72,9 +72,11 @@ view_configuration() {
         local interval_desc
         case "${REPORT_INTERVAL:-24}" in
             1)  interval_desc="Every 1 hour (at :00 of each hour)" ;;
+            2)  interval_desc="Every 2 hours (00:00, 02:00, 04:00...)" ;;
             3)  interval_desc="Every 3 hours (00:00, 03:00, 06:00...)" ;;
             4)  interval_desc="Every 4 hours (00:00, 04:00, 08:00...)" ;;
             6)  interval_desc="Every 6 hours (00:00, 06:00, 12:00, 18:00)" ;;
+            8)  interval_desc="Every 8 hours (00:00, 08:00, 16:00)" ;;
             12) interval_desc="Every 12 hours (00:00, 12:00)" ;;
             24) interval_desc="Once per day at ${REPORT_TIME:-09:00}" ;;
             *)  interval_desc="Unknown interval" ;;
@@ -150,16 +152,18 @@ update_configuration() {
     echo ""
     print_info "Select report sending interval:"
     echo "  1) Every 1 hour (at :00 of each hour)"
+    echo "  2) Every 2 hours (00:00, 02:00, 04:00...)"
     echo "  3) Every 3 hours (00:00, 03:00, 06:00...)"
     echo "  4) Every 4 hours (00:00, 04:00, 08:00...)"
     echo "  6) Every 6 hours (00:00, 06:00, 12:00, 18:00)"
+    echo "  8) Every 8 hours (00:00, 08:00, 16:00)"
     echo "  12) Every 12 hours (00:00, 12:00)"
     echo "  24) Once per day (at specific time)"
-    read -p "Enter interval in hours (1/3/4/6/12/24) [${REPORT_INTERVAL:-24}]: " input < /dev/tty
+    read -p "Enter interval in hours (1/2/3/4/6/8/12/24) [${REPORT_INTERVAL:-24}]: " input < /dev/tty
     REPORT_INTERVAL="${input:-${REPORT_INTERVAL:-24}}"
 
     # Validate report interval
-    if [[ ! "${REPORT_INTERVAL}" =~ ^(1|3|4|6|12|24)$ ]]; then
+    if [[ ! "${REPORT_INTERVAL}" =~ ^(1|2|3|4|6|8|12|24)$ ]]; then
         print_warning "Invalid interval, using default (24 hours)"
         REPORT_INTERVAL=24
     fi
@@ -251,6 +255,10 @@ install_cron_job() {
             cron_schedule="0 * * * *"
             description="every hour at :00"
             ;;
+        2)
+            cron_schedule="0 */2 * * *"
+            description="every 2 hours at :00"
+            ;;
         3)
             cron_schedule="0 */3 * * *"
             description="every 3 hours at :00"
@@ -262,6 +270,10 @@ install_cron_job() {
         6)
             cron_schedule="0 */6 * * *"
             description="every 6 hours at :00"
+            ;;
+        8)
+            cron_schedule="0 */8 * * *"
+            description="every 8 hours at :00"
             ;;
         12)
             cron_schedule="0 */12 * * *"
