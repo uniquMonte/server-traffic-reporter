@@ -634,52 +634,52 @@ send_daily_report() {
     # Build message
     local message="📊 *Daily Traffic Report*\n🖥️ ${SERVER_NAME}\n\n"
     message="${message}📈 *Today's Usage*\n"
-    message="${message}▪️ Used: ${daily_gb} GB\n"
+    message="${message}Used: ${daily_gb} GB\n"
 
     # Add detailed upload/download breakdown based on TRAFFIC_DIRECTION
     case "${TRAFFIC_DIRECTION:-1}" in
         1)
             # Bidirectional - show both upload and download
-            message="${message}   ⬇️ ${daily_rx_gb} GB\n"
-            message="${message}   ⬆️ ${daily_tx_gb} GB\n"
+            message="${message}  ⬇️ ${daily_rx_gb} GB\n"
+            message="${message}  ⬆️ ${daily_tx_gb} GB\n"
             ;;
         2)
             # Outbound only (upload/tx)
-            message="${message}   ⬆️ ${daily_tx_gb} GB\n"
+            message="${message}  ⬆️ ${daily_tx_gb} GB\n"
             ;;
         3)
             # Inbound only (download/rx)
-            message="${message}   ⬇️ ${daily_rx_gb} GB\n"
+            message="${message}  ⬇️ ${daily_rx_gb} GB\n"
             ;;
     esac
 
-    message="${message}▪️ Average: ${average_gb} GB\n"
-    message="${message}▪️ Status: ${ratio}x avg ${status_emoji} ${status_text}\n\n"
+    message="${message}Average: ${average_gb} GB\n"
+    message="${message}Status: ${ratio}x avg ${status_emoji} ${status_text}\n\n"
     message="${message}📅 *Cycle Total*\n"
-    message="${message}▪️ Used: ${cumulative_gb} GB\n"
+    message="${message}Used: ${cumulative_gb} GB\n"
 
     # Add detailed upload/download breakdown for billing cycle
     case "${TRAFFIC_DIRECTION:-1}" in
         1)
             # Bidirectional - show both upload and download
-            message="${message}   ⬇️ ${cumulative_rx_gb} GB\n"
-            message="${message}   ⬆️ ${cumulative_tx_gb} GB\n"
+            message="${message}  ⬇️ ${cumulative_rx_gb} GB\n"
+            message="${message}  ⬆️ ${cumulative_tx_gb} GB\n"
             ;;
         2)
             # Outbound only (upload/tx)
-            message="${message}   ⬆️ ${cumulative_tx_gb} GB\n"
+            message="${message}  ⬆️ ${cumulative_tx_gb} GB\n"
             ;;
         3)
             # Inbound only (download/rx)
-            message="${message}   ⬇️ ${cumulative_rx_gb} GB\n"
+            message="${message}  ⬇️ ${cumulative_rx_gb} GB\n"
             ;;
     esac
 
-    message="${message}▪️ Limit: ${limit_gb} GB\n"
-    message="${message}▪️ ${progress_bar} ${percentage}%\n\n"
+    message="${message}Limit: ${limit_gb} GB\n"
+    message="${message}${progress_bar} ${percentage}%\n\n"
     message="${message}🔄 *Cycle Info*\n"
-    message="${message}▪️ Days: ${days_since_reset} / $((days_since_reset + days_until_reset)) (${days_until_reset} remaining)\n"
-    message="${message}▪️ Resets: ${reset_day}th of each month"
+    message="${message}Days: ${days_since_reset} / $((days_since_reset + days_until_reset)) (${days_until_reset} remaining)\n"
+    message="${message}Resets: ${reset_day}th of each month"
 
     # Add warning if daily usage is critical
     if [ "${status_code}" == "critical" ]; then
