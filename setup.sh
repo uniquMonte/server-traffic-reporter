@@ -339,6 +339,84 @@ run_report_now() {
     read -p "Press Enter to continue..." < /dev/tty
 }
 
+# Function to reset database
+reset_database() {
+    clear
+    echo "======================================"
+    echo "  Reset Traffic Database"
+    echo "======================================"
+    echo ""
+
+    if [ ! -f "${CONFIG_FILE}" ]; then
+        print_error "Configuration not found. Please update configuration first."
+        read -p "Press Enter to continue..." < /dev/tty
+        return 1
+    fi
+
+    # Load configuration to get data file location
+    load_config
+
+    print_warning "This will:"
+    echo "  • Backup current database"
+    echo "  • Delete all traffic history"
+    echo "  • Reset cumulative traffic to 0"
+    echo "  • Initialize new database with detailed format"
+    echo ""
+
+    if [ -f "${TRAFFIC_DATA_FILE}" ]; then
+        echo "Current database info:"
+        echo "  File: ${TRAFFIC_DATA_FILE}"
+        echo "  Size: $(ls -lh ${TRAFFIC_DATA_FILE} 2>/dev/null | awk '{print $5}' || echo 'N/A')"
+        echo "  Lines: $(wc -l < ${TRAFFIC_DATA_FILE} 2>/dev/null || echo '0')"
+        echo ""
+    else
+        print_info "No existing database found."
+        echo ""
+    fi
+
+    read -p "Are you sure you want to reset? (yes/no): " confirm < /dev/tty
+
+    if [ "${confirm}" != "yes" ]; then
+        print_info "Reset cancelled."
+        read -p "Press Enter to continue..." < /dev/tty
+        return 0
+    fi
+
+    echo ""
+    print_info "Resetting database..."
+
+    # Backup old database if it exists
+    if [ -f "${TRAFFIC_DATA_FILE}" ]; then
+        local backup_file="${TRAFFIC_DATA_FILE}.backup.$(date +%Y%m%d_%H%M%S)"
+        cp "${TRAFFIC_DATA_FILE}" "${backup_file}"
+        print_success "Backup created: ${backup_file}"
+    fi
+
+    # Delete old database
+    rm -f "${TRAFFIC_DATA_FILE}"
+    print_success "Old database deleted"
+
+    # Initialize new database by running the script
+    print_info "Initializing new database..."
+    "${SCRIPTS_DIR}/traffic_monitor.sh" daily > /dev/null 2>&1
+
+    if [ -f "${TRAFFIC_DATA_FILE}" ]; then
+        print_success "New database initialized with detailed format"
+        echo ""
+        echo "New database content:"
+        echo "--------------------------------------"
+        cat "${TRAFFIC_DATA_FILE}"
+        echo "--------------------------------------"
+    else
+        print_error "Failed to initialize database"
+    fi
+
+    echo ""
+    print_success "Database reset complete!"
+    echo ""
+    read -p "Press Enter to continue..." < /dev/tty
+}
+
 # Function to uninstall
 uninstall() {
     clear
@@ -391,7 +469,8 @@ show_menu() {
     echo "3) Update scripts to latest version"
     echo "4) Test notification"
     echo "5) Run traffic report now"
-    echo "6) Uninstall"
+    echo "6) Reset traffic database"
+    echo "7) Uninstall"
     echo "0) Exit (or just press Enter)"
     echo ""
     read -p "Select an option: " choice < /dev/tty
@@ -470,6 +549,9 @@ main() {
                 run_report_now
                 ;;
             6)
+                reset_database
+                ;;
+            7)
                 uninstall
                 ;;
             0|"")

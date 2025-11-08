@@ -29,7 +29,25 @@ sudo /opt/vps-traffic-reporter/traffic_monitor.sh
 
 ## 🔄 重置数据库 / Reset Database
 
-### 方法一：使用交互式菜单（推荐）/ Method 1: Interactive Menu (Recommended)
+### 方法一：使用主菜单（最简单）/ Method 1: Main Menu (Easiest)
+
+1. 运行设置脚本：
+```bash
+cd /path/to/server-traffic-reporter
+./setup.sh
+```
+
+2. 选择选项 `6) Reset traffic database`
+
+3. 确认重置（输入 `yes`）
+
+脚本会自动：
+- ✅ 备份现有数据库
+- ✅ 删除旧数据
+- ✅ 初始化新的详细格式数据库
+- ✅ 显示新数据库内容
+
+### 方法二：使用 traffic_monitor 交互菜单 / Method 2: Traffic Monitor Menu
 
 1. 运行脚本进入菜单：
 ```bash
@@ -46,7 +64,7 @@ sudo /opt/vps-traffic-reporter/traffic_monitor.sh
 - ✅ 初始化新的详细格式数据库
 - ✅ 发送Telegram通知
 
-### 方法二：手动操作 / Method 2: Manual Steps
+### 方法三：手动操作 / Method 3: Manual Steps
 
 如果您想手动操作，请按以下步骤：
 
