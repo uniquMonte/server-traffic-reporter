@@ -260,8 +260,8 @@ get_cumulative_traffic_detailed() {
 
     # Get last cumulative values from database
     local last_line=$(grep -v "^#" "${TRAFFIC_DATA_FILE}" | grep -v "RESET" | tail -1)
-    local last_cumulative_rx=$(echo "${last_line}" | cut -d'|' -f4 2>/dev/null || echo "0")
-    local last_cumulative_tx=$(echo "${last_line}" | cut -d'|' -f5 2>/dev/null || echo "0")
+    local last_cumulative_rx=$(echo "${last_line}" | cut -d'|' -f6 2>/dev/null || echo "0")
+    local last_cumulative_tx=$(echo "${last_line}" | cut -d'|' -f7 2>/dev/null || echo "0")
 
     # Validate numbers
     if ! [[ "${last_cumulative_rx}" =~ ^[0-9]+$ ]]; then
