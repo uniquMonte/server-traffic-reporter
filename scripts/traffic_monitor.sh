@@ -676,7 +676,7 @@ send_daily_report() {
     esac
 
     message="${message}• Limit: ${limit_gb} GB\n"
-    message="${message}• Progress: ${progress_bar} ${percentage}%\n\n"
+    message="${message}• ${progress_bar} ${percentage}%\n\n"
     message="${message}🔄 *Cycle Info*\n"
     message="${message}• Days: ${days_since_reset} / $((days_since_reset + days_until_reset)) (${days_until_reset} remaining)\n"
     message="${message}• Resets: ${reset_day}th of each month"
