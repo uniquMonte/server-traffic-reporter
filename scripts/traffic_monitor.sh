@@ -656,7 +656,6 @@ send_daily_report() {
     message="${message}• Average: ${average_gb} GB\n"
     message="${message}• Status: ${ratio}x avg ${status_emoji} ${status_text}\n\n"
     message="${message}📅 *Cycle Total*\n"
-    message="${message}• Limit: ${limit_gb} GB\n"
     message="${message}• Used: ${cumulative_gb} GB\n"
 
     # Add detailed upload/download breakdown for billing cycle
@@ -676,6 +675,7 @@ send_daily_report() {
             ;;
     esac
 
+    message="${message}• Limit: ${limit_gb} GB\n"
     message="${message}• Progress: ${progress_bar} ${percentage}%\n\n"
     message="${message}🔄 *Cycle Info*\n"
     message="${message}• Days: ${days_since_reset} / $((days_since_reset + days_until_reset)) (${days_until_reset} remaining)\n"
@@ -760,10 +760,10 @@ view_statistics() {
     echo "   ⬆️ ${daily_tx_gb} GB"
     echo ""
     echo "📅 Cycle Total:"
-    echo "   Limit: ${MONTHLY_TRAFFIC_LIMIT} GB"
     echo "   Used: ${cumulative_gb} GB (${percentage}%)"
     echo "   ⬇️ ${cumulative_rx_gb} GB"
     echo "   ⬆️ ${cumulative_tx_gb} GB"
+    echo "   Limit: ${MONTHLY_TRAFFIC_LIMIT} GB"
     echo "   ${progress_bar}"
     echo ""
     echo "=========================================="
