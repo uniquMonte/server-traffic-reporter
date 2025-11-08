@@ -634,7 +634,7 @@ send_daily_report() {
     # Build message
     local message="📊 *Daily Traffic Report*\n🖥️ ${SERVER_NAME}\n\n"
     message="${message}📈 *Today's Usage*\n"
-    message="${message}  ├ Used: ${daily_gb} GB\n"
+    message="${message}  ├ 💎 Used: *${daily_gb} GB*\n"
 
     # Add detailed upload/download breakdown based on TRAFFIC_DIRECTION
     case "${TRAFFIC_DIRECTION:-1}" in
@@ -656,7 +656,7 @@ send_daily_report() {
     message="${message}  ├ Average: ${average_gb} GB\n"
     message="${message}  └ Status: ${ratio}x avg ${status_emoji} ${status_text}\n\n"
     message="${message}📅 *Cycle Total*\n"
-    message="${message}  ├ Used: ${cumulative_gb} GB\n"
+    message="${message}  ├ 💎 Used: *${cumulative_gb} GB*\n"
 
     # Add detailed upload/download breakdown for billing cycle
     case "${TRAFFIC_DIRECTION:-1}" in
