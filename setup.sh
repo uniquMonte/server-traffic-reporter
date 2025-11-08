@@ -68,12 +68,26 @@ view_configuration() {
             3) traffic_mode="Inbound only (client to server)" ;;
         esac
 
+        # Determine report interval description
+        local interval_desc
+        case "${REPORT_INTERVAL:-24}" in
+            1)  interval_desc="Every 1 hour (at :00 of each hour)" ;;
+            2)  interval_desc="Every 2 hours (00:00, 02:00, 04:00...)" ;;
+            3)  interval_desc="Every 3 hours (00:00, 03:00, 06:00...)" ;;
+            4)  interval_desc="Every 4 hours (00:00, 04:00, 08:00...)" ;;
+            6)  interval_desc="Every 6 hours (00:00, 06:00, 12:00, 18:00)" ;;
+            8)  interval_desc="Every 8 hours (00:00, 08:00, 16:00)" ;;
+            12) interval_desc="Every 12 hours (00:00, 12:00)" ;;
+            24) interval_desc="Once per day at ${REPORT_TIME:-09:00}" ;;
+            *)  interval_desc="Unknown interval" ;;
+        esac
+
         echo "Server Name: ${SERVER_NAME:-Not set}"
         echo "Telegram Bot Token: ${TELEGRAM_BOT_TOKEN:0:10}...${TELEGRAM_BOT_TOKEN: -5}"
         echo "Telegram Chat ID: ${TELEGRAM_CHAT_ID:-Not set}"
         echo "Traffic Reset Day: ${TRAFFIC_RESET_DAY:-Not set} (Day of month)"
         echo "Monthly Traffic Limit: ${MONTHLY_TRAFFIC_LIMIT:-Not set} GB"
-        echo "Report Time: ${REPORT_TIME:-Not set} (HH:MM format)"
+        echo "Report Interval: ${interval_desc}"
         echo "Network Interface: ${NETWORK_INTERFACE:-Not set}"
         echo "Traffic Mode: ${traffic_mode}"
         echo ""
@@ -134,10 +148,36 @@ update_configuration() {
     read -p "Enter monthly traffic limit in GB [${MONTHLY_TRAFFIC_LIMIT:-500}]: " input < /dev/tty
     MONTHLY_TRAFFIC_LIMIT="${input:-${MONTHLY_TRAFFIC_LIMIT:-500}}"
 
-    # Report Time
+    # Report Interval
     echo ""
-    read -p "Enter daily report time (HH:MM format, 24h) [${REPORT_TIME:-09:00}]: " input < /dev/tty
-    REPORT_TIME="${input:-${REPORT_TIME:-09:00}}"
+    print_info "Select report sending interval:"
+    echo "  1) Every 1 hour (at :00 of each hour)"
+    echo "  2) Every 2 hours (00:00, 02:00, 04:00...)"
+    echo "  3) Every 3 hours (00:00, 03:00, 06:00...)"
+    echo "  4) Every 4 hours (00:00, 04:00, 08:00...)"
+    echo "  6) Every 6 hours (00:00, 06:00, 12:00, 18:00)"
+    echo "  8) Every 8 hours (00:00, 08:00, 16:00)"
+    echo "  12) Every 12 hours (00:00, 12:00)"
+    echo "  24) Once per day (at specific time)"
+    read -p "Enter interval in hours (1/2/3/4/6/8/12/24) [${REPORT_INTERVAL:-24}]: " input < /dev/tty
+    REPORT_INTERVAL="${input:-${REPORT_INTERVAL:-24}}"
+
+    # Validate report interval
+    if [[ ! "${REPORT_INTERVAL}" =~ ^(1|2|3|4|6|8|12|24)$ ]]; then
+        print_warning "Invalid interval, using default (24 hours)"
+        REPORT_INTERVAL=24
+    fi
+
+    # Report Time (only for 24-hour interval)
+    if [ "${REPORT_INTERVAL}" = "24" ]; then
+        echo ""
+        read -p "Enter daily report time (HH:MM format, 24h) [${REPORT_TIME:-09:00}]: " input < /dev/tty
+        REPORT_TIME="${input:-${REPORT_TIME:-09:00}}"
+    else
+        # For other intervals, set time to 00:00 (will use interval-based cron)
+        REPORT_TIME="00:00"
+        print_info "Reports will be sent every ${REPORT_INTERVAL} hour(s) at the top of the hour"
+    fi
 
     # Network Interface
     echo ""
@@ -170,6 +210,7 @@ TELEGRAM_BOT_TOKEN="${TELEGRAM_BOT_TOKEN}"
 TELEGRAM_CHAT_ID="${TELEGRAM_CHAT_ID}"
 TRAFFIC_RESET_DAY=${TRAFFIC_RESET_DAY}
 MONTHLY_TRAFFIC_LIMIT=${MONTHLY_TRAFFIC_LIMIT}
+REPORT_INTERVAL=${REPORT_INTERVAL}
 REPORT_TIME="${REPORT_TIME}"
 NETWORK_INTERFACE="${NETWORK_INTERFACE}"
 TRAFFIC_DIRECTION=${TRAFFIC_DIRECTION}
@@ -202,20 +243,65 @@ install_cron_job() {
 
     load_config
 
-    # Extract hour and minute from REPORT_TIME
-    local hour=$(echo "${REPORT_TIME}" | cut -d':' -f1)
-    local minute=$(echo "${REPORT_TIME}" | cut -d':' -f2)
+    # Default interval to 24 hours if not set (for backward compatibility)
+    REPORT_INTERVAL="${REPORT_INTERVAL:-24}"
+
+    local cron_schedule
+    local description
+
+    # Generate cron schedule based on interval
+    case "${REPORT_INTERVAL}" in
+        1)
+            cron_schedule="0 * * * *"
+            description="every hour at :00"
+            ;;
+        2)
+            cron_schedule="0 */2 * * *"
+            description="every 2 hours at :00"
+            ;;
+        3)
+            cron_schedule="0 */3 * * *"
+            description="every 3 hours at :00"
+            ;;
+        4)
+            cron_schedule="0 */4 * * *"
+            description="every 4 hours at :00"
+            ;;
+        6)
+            cron_schedule="0 */6 * * *"
+            description="every 6 hours at :00"
+            ;;
+        8)
+            cron_schedule="0 */8 * * *"
+            description="every 8 hours at :00"
+            ;;
+        12)
+            cron_schedule="0 */12 * * *"
+            description="every 12 hours at :00"
+            ;;
+        24)
+            # Extract hour and minute from REPORT_TIME
+            local hour=$(echo "${REPORT_TIME}" | cut -d':' -f1)
+            local minute=$(echo "${REPORT_TIME}" | cut -d':' -f2)
+            cron_schedule="${minute} ${hour} * * *"
+            description="daily at ${REPORT_TIME}"
+            ;;
+        *)
+            print_error "Invalid report interval: ${REPORT_INTERVAL}"
+            return 1
+            ;;
+    esac
 
     # Remove old cron job if exists
     (crontab -l 2>/dev/null | grep -v "traffic_monitor.sh") | crontab - 2>/dev/null || true
 
     # Add new cron job
-    (crontab -l 2>/dev/null; echo "${minute} ${hour} * * * ${SCRIPTS_DIR}/traffic_monitor.sh daily >> ${DATA_DIR}/cron.log 2>&1") | crontab -
+    (crontab -l 2>/dev/null; echo "${cron_schedule} ${SCRIPTS_DIR}/traffic_monitor.sh daily >> ${DATA_DIR}/cron.log 2>&1") | crontab -
 
     # Update config to mark cron as installed
     sed -i 's/CRON_INSTALLED="no"/CRON_INSTALLED="yes"/' "${CONFIG_FILE}"
 
-    print_success "Cron job installed! Daily report will run at ${REPORT_TIME}"
+    print_success "Cron job installed! Reports will be sent ${description}"
 }
 
 # Function to uninstall cron job
