@@ -640,16 +640,16 @@ send_daily_report() {
     case "${TRAFFIC_DIRECTION:-1}" in
         1)
             # Bidirectional - show both upload and download
-            message="${message}             ├ ⬇️  ${daily_rx_gb} GB\n"
-            message="${message}             └ ⬆️  ${daily_tx_gb} GB\n"
+            message="${message}             ├ ⬇️ ${daily_rx_gb} GB\n"
+            message="${message}             └ ⬆️ ${daily_tx_gb} GB\n"
             ;;
         2)
             # Outbound only (upload/tx)
-            message="${message}             └ ⬆️  ${daily_tx_gb} GB\n"
+            message="${message}             └ ⬆️ ${daily_tx_gb} GB\n"
             ;;
         3)
             # Inbound only (download/rx)
-            message="${message}             └ ⬇️  ${daily_rx_gb} GB\n"
+            message="${message}             └ ⬇️ ${daily_rx_gb} GB\n"
             ;;
     esac
 
@@ -662,16 +662,16 @@ send_daily_report() {
     case "${TRAFFIC_DIRECTION:-1}" in
         1)
             # Bidirectional - show both upload and download
-            message="${message}             ├ ⬇️  ${cumulative_rx_gb} GB\n"
-            message="${message}             └ ⬆️  ${cumulative_tx_gb} GB\n"
+            message="${message}             ├ ⬇️ ${cumulative_rx_gb} GB\n"
+            message="${message}             └ ⬆️ ${cumulative_tx_gb} GB\n"
             ;;
         2)
             # Outbound only (upload/tx)
-            message="${message}             └ ⬆️  ${cumulative_tx_gb} GB\n"
+            message="${message}             └ ⬆️ ${cumulative_tx_gb} GB\n"
             ;;
         3)
             # Inbound only (download/rx)
-            message="${message}             └ ⬇️  ${cumulative_rx_gb} GB\n"
+            message="${message}             └ ⬇️ ${cumulative_rx_gb} GB\n"
             ;;
     esac
 
