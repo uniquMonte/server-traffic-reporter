@@ -547,7 +547,6 @@ uninstall() {
 
 # Function to display main menu
 show_menu() {
-    clear
     echo "======================================"
     echo "  VPS Traffic Reporter"
     echo "======================================"
@@ -617,6 +616,7 @@ main() {
         read -p "Press Enter to continue to main menu..." < /dev/tty
     fi
 
+    clear
     while true; do
         show_menu
 
