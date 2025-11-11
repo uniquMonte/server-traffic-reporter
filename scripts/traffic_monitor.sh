@@ -985,23 +985,23 @@ main() {
                 echo ""
                 echo "✅ Daily report sent successfully!"
                 echo ""
-                read -p "Press Enter to continue..."
+                sleep 1
                 ;;
             2)
                 manual_reset_database
-                read -p "Press Enter to continue..."
+                sleep 1
                 ;;
             3)
                 view_statistics
-                read -p "Press Enter to continue..."
+                sleep 1
                 ;;
             4)
                 show_database
-                read -p "Press Enter to continue..."
+                sleep 1
                 ;;
             5)
                 test_configuration
-                read -p "Press Enter to continue..."
+                sleep 1
                 ;;
             0)
                 echo ""
@@ -1013,7 +1013,7 @@ main() {
                 echo ""
                 echo "❌ Invalid option. Please select 0-5."
                 echo ""
-                read -p "Press Enter to continue..."
+                sleep 1
                 ;;
         esac
     done

@@ -102,7 +102,7 @@ view_configuration() {
     fi
 
     echo ""
-    read -p "Press Enter to continue..." < /dev/tty
+    sleep 1
 }
 
 # Function to detect network interface
@@ -231,7 +231,7 @@ EOF
     fi
 
     echo ""
-    read -p "Press Enter to continue..." < /dev/tty
+    sleep 1
 }
 
 # Function to install cron job
@@ -364,7 +364,7 @@ update_scripts() {
     fi
 
     echo ""
-    read -p "Press Enter to continue..." < /dev/tty
+    sleep 1
 }
 
 # Function to test notification
@@ -394,7 +394,7 @@ test_notification() {
     fi
 
     echo ""
-    read -p "Press Enter to continue..." < /dev/tty
+    sleep 1
 }
 
 # Function to run traffic report now
@@ -422,7 +422,7 @@ run_report_now() {
     fi
 
     echo ""
-    read -p "Press Enter to continue..." < /dev/tty
+    sleep 1
 }
 
 # Function to reset database
@@ -464,7 +464,8 @@ reset_database() {
 
     if [ "${confirm}" != "yes" ]; then
         print_info "Reset cancelled."
-        read -p "Press Enter to continue..." < /dev/tty
+        echo ""
+        sleep 1
         return 0
     fi
 
@@ -500,7 +501,7 @@ reset_database() {
     echo ""
     print_success "Database reset complete!"
     echo ""
-    read -p "Press Enter to continue..." < /dev/tty
+    sleep 1
 }
 
 # Function to uninstall
@@ -516,7 +517,8 @@ uninstall() {
 
     if [ "${confirm}" != "yes" ]; then
         print_info "Uninstall cancelled."
-        read -p "Press Enter to continue..." < /dev/tty
+        echo ""
+        sleep 1
         return 0
     fi
 
