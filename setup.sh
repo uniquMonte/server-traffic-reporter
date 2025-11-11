@@ -53,7 +53,7 @@ load_config() {
 
 # Function to display current configuration
 view_configuration() {
-    clear
+    echo ""
     echo "======================================"
     echo "  Current Configuration"
     echo "======================================"
@@ -113,7 +113,7 @@ detect_network_interface() {
 
 # Function to update configuration
 update_configuration() {
-    clear
+    echo ""
     echo "======================================"
     echo "  Update Configuration"
     echo "======================================"
@@ -312,7 +312,7 @@ uninstall_cron_job() {
 
 # Function to update scripts
 update_scripts() {
-    clear
+    echo ""
     echo "======================================"
     echo "  Update Scripts"
     echo "======================================"
@@ -369,7 +369,7 @@ update_scripts() {
 
 # Function to test notification
 test_notification() {
-    clear
+    echo ""
     echo "======================================"
     echo "  Test Telegram Notification"
     echo "======================================"
@@ -399,7 +399,7 @@ test_notification() {
 
 # Function to run traffic report now
 run_report_now() {
-    clear
+    echo ""
     echo "======================================"
     echo "  Run Traffic Report"
     echo "======================================"
@@ -427,7 +427,7 @@ run_report_now() {
 
 # Function to reset database
 reset_database() {
-    clear
+    echo ""
     echo "======================================"
     echo "  Reset Traffic Database"
     echo "======================================"
@@ -506,7 +506,7 @@ reset_database() {
 
 # Function to uninstall
 uninstall() {
-    clear
+    echo ""
     echo "======================================"
     echo "  Uninstall VPS Traffic Reporter"
     echo "======================================"
