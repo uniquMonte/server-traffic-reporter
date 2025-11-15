@@ -123,8 +123,10 @@ update_configuration() {
     load_config 2>/dev/null || true
 
     # Server Name
-    read -p "Enter server name [${SERVER_NAME:-MyVPS}]: " input < /dev/tty
-    SERVER_NAME="${input:-${SERVER_NAME:-MyVPS}}"
+    # Use existing SERVER_NAME if available, otherwise use system hostname
+    DEFAULT_SERVER_NAME="${SERVER_NAME:-$(hostname)}"
+    read -p "Enter server name [${DEFAULT_SERVER_NAME}]: " input < /dev/tty
+    SERVER_NAME="${input:-${DEFAULT_SERVER_NAME}}"
 
     # Telegram Bot Token
     echo ""
