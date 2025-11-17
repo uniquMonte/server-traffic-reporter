@@ -139,14 +139,21 @@ need_reset() {
         return 0  # Need reset
     fi
 
-    # Check if we already reset this month
+    # Calculate the correct reset date for this month
+    local reset_date_this_month="${current_month}-$(printf "%02d" ${effective_reset_day})"
+
+    # Check if we already reset this month on the correct reset day
     if [ "${last_reset_month}" == "${current_month}" ]; then
-        return 1  # Already reset this month, no need to reset
+        # We reset this month, but check if it was on the correct reset day
+        if [ "${last_reset_date}" == "${reset_date_this_month}" ]; then
+            return 1  # Already reset this month on correct day, no need to reset
+        fi
+        # Reset happened this month but not on the correct day
+        # Continue to check if we should reset on the correct day
     fi
 
     # Check if we have crossed the reset day in this month
     # Compare: current_date >= reset_date_of_this_month
-    local reset_date_this_month="${current_month}-$(printf "%02d" ${effective_reset_day})"
     local current_date=$(date +%Y-%m-%d)
 
     # If current date >= reset date of this month, we need to reset
