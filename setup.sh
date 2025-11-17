@@ -553,6 +553,8 @@ show_menu() {
     echo "  VPS Traffic Reporter"
     echo "======================================"
     echo ""
+    print_info "Installation: ${SCRIPT_DIR}"
+    echo ""
     print_info "💡 Tip: Run option 3 first to update to the latest version from GitHub"
     echo ""
     echo "1) View current configuration"
