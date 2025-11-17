@@ -354,60 +354,34 @@ check_existing_installation() {
         fi
 
         echo ""
-        echo "What would you like to do?"
-        echo "  1) Update to latest version (recommended)"
-        echo "  2) Open management menu"
-        echo "  3) Exit"
+        print_info "Updating to latest version..."
+        cd "${default_dir}"
+
+        # Check if it's a git repository
+        if [ -d ".git" ]; then
+            # Stash any local changes
+            if ! git diff-index --quiet HEAD 2>/dev/null; then
+                print_warning "Local modifications detected. Stashing changes..."
+                git stash save "Auto-backup during update $(date +%Y%m%d_%H%M%S)" 2>/dev/null || true
+            fi
+
+            # Fetch and pull latest changes
+            print_info "Fetching latest updates from GitHub..."
+            git fetch origin
+            git checkout main
+            git pull origin main
+
+            print_success "Updated to latest version!"
+        else
+            print_warning "Not a git repository. Cannot auto-update."
+            print_info "Installation appears corrupted. Please reinstall."
+            exit 1
+        fi
+
         echo ""
-        read -p "Select option (1/2/3, press Enter for 1): " action < /dev/tty
-
-        # Default to update if empty
-        action=${action:-1}
-
-        case "${action}" in
-            1)
-                print_info "Updating to latest version..."
-                cd "${default_dir}"
-
-                # Check if it's a git repository
-                if [ -d ".git" ]; then
-                    # Stash any local changes
-                    if ! git diff-index --quiet HEAD 2>/dev/null; then
-                        print_warning "Local modifications detected. Stashing changes..."
-                        git stash save "Auto-backup during update $(date +%Y%m%d_%H%M%S)" 2>/dev/null || true
-                    fi
-
-                    # Fetch and pull latest changes
-                    print_info "Fetching latest updates from GitHub..."
-                    git fetch origin
-                    git checkout main
-                    git pull origin main
-
-                    print_success "Updated to latest version!"
-                    echo ""
-                    print_info "Starting VPS Traffic Reporter..."
-                    sleep 1
-                    exec ./setup.sh
-                else
-                    print_warning "Not a git repository. Cannot auto-update."
-                    print_info "Please reinstall to get the latest version."
-                    echo ""
-                    print_info "Starting VPS Traffic Reporter..."
-                    sleep 1
-                    exec ./setup.sh
-                fi
-                ;;
-            2)
-                print_info "Starting VPS Traffic Reporter..."
-                sleep 1
-                cd "${default_dir}"
-                exec ./setup.sh
-                ;;
-            3|*)
-                print_info "Exiting."
-                exit 0
-                ;;
-        esac
+        print_info "Starting VPS Traffic Reporter..."
+        sleep 1
+        exec ./setup.sh
     fi
 }
 
