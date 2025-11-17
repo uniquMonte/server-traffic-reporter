@@ -115,8 +115,8 @@ init_traffic_db() {
 
 # Function to check if we need to reset (new billing cycle)
 need_reset() {
-    local current_day=$(date +%d)
     local current_month=$(date +%Y-%m)
+    local current_date=$(date +%Y-%m-%d)
     local reset_day=${TRAFFIC_RESET_DAY}
 
     # Get the number of days in current month
@@ -129,40 +129,35 @@ need_reset() {
         effective_reset_day=${days_in_month}
     fi
 
-    # Get last reset date and month from database
+    # Calculate the reset date for this month (YYYY-MM-DD format)
+    local reset_date_this_month="${current_month}-$(printf "%02d" ${effective_reset_day})"
+
+    # Get last reset date from database
     local last_reset_line=$(grep "RESET|" "${TRAFFIC_DATA_FILE}" 2>/dev/null | tail -1)
-    local last_reset_month=$(echo "${last_reset_line}" | cut -d'|' -f4 || echo "")
     local last_reset_date=$(echo "${last_reset_line}" | cut -d'|' -f2 || echo "")
 
     # If no reset record exists, we need to reset
-    if [ -z "${last_reset_month}" ]; then
+    if [ -z "${last_reset_date}" ]; then
         return 0  # Need reset
     fi
 
-    # Check if we already reset this month
-    if [ "${last_reset_month}" == "${current_month}" ]; then
-        return 1  # Already reset this month, no need to reset
+    # Simple logic:
+    # 1. If today < reset day of this month, don't reset
+    # 2. If we already reset on the correct reset day this month, don't reset
+    # 3. Otherwise, reset
+
+    # Check 1: Has the reset day arrived this month?
+    if [[ "${current_date}" < "${reset_date_this_month}" ]]; then
+        return 1  # Reset day hasn't arrived yet, no reset needed
     fi
 
-    # Check if we have crossed the reset day in this month
-    # Compare: current_date >= reset_date_of_this_month
-    local reset_date_this_month="${current_month}-$(printf "%02d" ${effective_reset_day})"
-    local current_date=$(date +%Y-%m-%d)
-
-    # If current date >= reset date of this month, we need to reset
-    if [[ "${current_date}" > "${reset_date_this_month}" ]] || [[ "${current_date}" == "${reset_date_this_month}" ]]; then
-        return 0  # Need reset
+    # Check 2: Did we already reset on the correct reset day this month?
+    if [ "${last_reset_date}" == "${reset_date_this_month}" ]; then
+        return 1  # Already reset on the correct day this month, no reset needed
     fi
 
-    # Additional check: if last reset was in a previous month and we're past the reset day
-    # Handle year boundary (e.g., last reset was 2024-12, current is 2025-01)
-    if [ "$((10#${current_day}))" -ge "$((10#${effective_reset_day}))" ] 2>/dev/null; then
-        if [ "${last_reset_month}" != "${current_month}" ]; then
-            return 0  # Need reset
-        fi
-    fi
-
-    return 1  # No reset needed
+    # If we reach here: it's reset day (or after) and we haven't reset yet
+    return 0  # Need reset
 }
 
 # Function to reset traffic counter
@@ -597,29 +592,38 @@ send_daily_report() {
     fi
 
     # Get billing cycle info
-    local current_day=$(date +%d)
     local reset_day=$(printf "%02d" ${TRAFFIC_RESET_DAY})
     local current_month=$(date +%Y-%m)
+    local today_date=$(date +%Y-%m-%d)
 
-    # Calculate days until reset
-    local days_in_month=$(date -d "${current_month}-01 +1 month -1 day" +%d)
-    local days_until_reset=0
+    # Get the last reset date from database
+    local last_reset_line=$(grep "RESET|" "${TRAFFIC_DATA_FILE}" 2>/dev/null | tail -1)
+    local last_reset_date=$(echo "${last_reset_line}" | cut -d'|' -f2 || echo "${today_date}")
 
-    if [ "$((10#${current_day}))" -lt "$((10#${TRAFFIC_RESET_DAY}))" ] 2>/dev/null; then
-        # Days remaining = reset_day - current_day - 1
-        # The -1 is because the reset day itself is not included in current cycle
-        # Example: today is 8th, reset on 15th → remaining days = 15 - 8 - 1 = 6 (9th to 14th)
-        days_until_reset=$((10#${TRAFFIC_RESET_DAY} - 10#${current_day} - 1))
+    # Calculate the next reset date
+    # Check if reset day has passed this month
+    local current_day=$(date +%d)
+    local reset_date_this_month="${current_month}-${reset_day}"
+    local next_reset_date=""
+
+    if [[ "${today_date}" < "${reset_date_this_month}" ]]; then
+        # Reset day hasn't arrived this month yet
+        next_reset_date="${reset_date_this_month}"
     else
-        # Calculate days until next month's reset date
+        # Reset day has passed, next reset is next month
         local next_month=$(date -d "${current_month}-01 +1 month" +%Y-%m)
-        local next_reset_date="${next_month}-${reset_day}"
-        local today_date=$(date +%Y-%m-%d)
-
-        # Use today's 00:00 timestamp for stable calculation
-        # Subtract 1 because reset day is not included in current cycle
-        days_until_reset=$(( ($(date -d "${next_reset_date}" +%s) - $(date -d "${today_date}" +%s)) / 86400 - 1 ))
+        next_reset_date="${next_month}-${reset_day}"
     fi
+
+    # Calculate cycle length and remaining days
+    local last_reset_timestamp=$(date -d "${last_reset_date}" +%s 2>/dev/null || date +%s)
+    local next_reset_timestamp=$(date -d "${next_reset_date}" +%s 2>/dev/null || date +%s)
+    local today_timestamp=$(date -d "${today_date}" +%s)
+
+    local cycle_length_days=$(( (next_reset_timestamp - last_reset_timestamp) / 86400 ))
+    # Subtract 1 because reset day is not included in the count of remaining days
+    # Example: Today is Day 1 (reset day), next reset in 30 days, remaining = 29 days (Day 2 to Day 30)
+    local days_until_reset=$(( (next_reset_timestamp - today_timestamp) / 86400 - 1 ))
 
     # Determine cycle status emoji
     local cycle_status_emoji="✅"
@@ -678,7 +682,7 @@ send_daily_report() {
     message="${message}  ├ Limit: ${limit_gb} GB\n"
     message="${message}  └ ${progress_bar} ${percentage}%\n\n"
     message="${message}🔄 *Cycle Info*\n"
-    message="${message}  ├ Days: ${days_since_reset} / $((days_since_reset + days_until_reset)) (${days_until_reset} remaining)\n"
+    message="${message}  ├ Days: ${days_since_reset} / ${cycle_length_days} (${days_until_reset} remaining)\n"
     message="${message}  └ Resets: ${reset_day}th of each month"
 
     # Add warning if daily usage is critical
