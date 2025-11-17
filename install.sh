@@ -379,21 +379,9 @@ check_existing_installation() {
         fi
 
         echo ""
-        read -p "Would you like to open the management menu? (Y/n, press Enter for yes): " open_menu < /dev/tty
-
-        # Default to yes if empty
-        open_menu=${open_menu:-y}
-
-        if [[ "${open_menu}" =~ ^[Yy]$ ]]; then
-            print_info "Starting VPS Traffic Reporter..."
-            sleep 1
-            exec ./setup.sh
-        else
-            echo ""
-            print_success "Update complete! Run 'vps-traffic-reporter' to open the menu."
-            echo ""
-            exit 0
-        fi
+        print_info "Starting VPS Traffic Reporter..."
+        sleep 1
+        exec ./setup.sh
     fi
 }
 
