@@ -878,7 +878,7 @@ manual_reset_database() {
         echo ""
     fi
 
-    echo -n "Are you sure you want to reset? (yes/no): "
+    echo -n "Type 'yes' to confirm, or press Enter to cancel: "
     read confirmation
 
     if [ "${confirmation}" != "yes" ]; then

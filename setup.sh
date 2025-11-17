@@ -462,7 +462,7 @@ reset_database() {
         echo ""
     fi
 
-    read -p "Are you sure you want to reset? (yes/no): " confirm < /dev/tty
+    read -p "Type 'yes' to confirm, or press Enter to cancel: " confirm < /dev/tty
 
     if [ "${confirm}" != "yes" ]; then
         print_info "Reset cancelled."
@@ -515,7 +515,7 @@ uninstall() {
     echo ""
 
     print_warning "This will remove all cron jobs and data files."
-    read -p "Are you sure you want to uninstall? (yes/no): " confirm < /dev/tty
+    read -p "Type 'yes' to confirm, or press Enter to cancel: " confirm < /dev/tty
 
     if [ "${confirm}" != "yes" ]; then
         print_info "Uninstall cancelled."
