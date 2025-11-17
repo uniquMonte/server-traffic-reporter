@@ -621,7 +621,9 @@ send_daily_report() {
     local today_timestamp=$(date -d "${today_date}" +%s)
 
     local cycle_length_days=$(( (next_reset_timestamp - last_reset_timestamp) / 86400 ))
-    local days_until_reset=$(( (next_reset_timestamp - today_timestamp) / 86400 ))
+    # Subtract 1 because reset day is not included in the count of remaining days
+    # Example: Today is Day 1 (reset day), next reset in 30 days, remaining = 29 days (Day 2 to Day 30)
+    local days_until_reset=$(( (next_reset_timestamp - today_timestamp) / 86400 - 1 ))
 
     # Determine cycle status emoji
     local cycle_status_emoji="✅"
