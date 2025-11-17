@@ -143,20 +143,56 @@ determine_install_dir() {
     # Check if directory already exists
     if [ -d "${INSTALL_DIR}" ]; then
         echo ""
-        print_warning "Directory ${INSTALL_DIR} already exists!"
-        read -p "Remove it and reinstall? (Y/n, press Enter for yes): " remove_existing < /dev/tty
+        print_warning "Installation directory already exists!"
+        echo ""
+        echo "What would you like to do?"
+        echo "  1) Update existing installation (recommended)"
+        echo "  2) Remove and reinstall"
+        echo "  3) Cancel"
+        echo ""
+        read -p "Select option (1/2/3, press Enter for 1): " action < /dev/tty
 
-        # Default to yes if empty
-        remove_existing=${remove_existing:-y}
+        # Default to update if empty
+        action=${action:-1}
 
-        if [[ "${remove_existing}" =~ ^[Yy]$ ]]; then
-            print_info "Removing existing installation..."
-            rm -rf "${INSTALL_DIR}"
-            print_success "Removed existing installation"
-        else
-            print_error "Installation cancelled"
-            exit 1
-        fi
+        case "${action}" in
+            1)
+                print_info "Updating existing installation..."
+                cd "${INSTALL_DIR}"
+
+                # Check if it's a git repository
+                if [ -d ".git" ]; then
+                    # Stash any local changes
+                    if ! git diff-index --quiet HEAD 2>/dev/null; then
+                        print_warning "Local modifications detected. Stashing changes..."
+                        git stash save "Auto-backup during reinstall $(date +%Y%m%d_%H%M%S)" 2>/dev/null || true
+                    fi
+
+                    # Fetch and pull latest changes
+                    print_info "Fetching latest updates from GitHub..."
+                    git fetch origin
+                    git checkout "${GITHUB_BRANCH}"
+                    git pull origin "${GITHUB_BRANCH}"
+
+                    print_success "Updated to latest version!"
+
+                    # Skip download step
+                    return 0
+                else
+                    print_warning "Not a git repository. Will remove and reinstall."
+                    rm -rf "${INSTALL_DIR}"
+                fi
+                ;;
+            2)
+                print_info "Removing existing installation..."
+                rm -rf "${INSTALL_DIR}"
+                print_success "Removed existing installation"
+                ;;
+            3|*)
+                print_error "Installation cancelled"
+                exit 1
+                ;;
+        esac
     fi
 
     echo ""
@@ -318,10 +354,60 @@ check_existing_installation() {
         fi
 
         echo ""
-        print_info "Starting VPS Traffic Reporter..."
-        sleep 1
-        cd "${default_dir}"
-        exec ./setup.sh
+        echo "What would you like to do?"
+        echo "  1) Update to latest version (recommended)"
+        echo "  2) Open management menu"
+        echo "  3) Exit"
+        echo ""
+        read -p "Select option (1/2/3, press Enter for 1): " action < /dev/tty
+
+        # Default to update if empty
+        action=${action:-1}
+
+        case "${action}" in
+            1)
+                print_info "Updating to latest version..."
+                cd "${default_dir}"
+
+                # Check if it's a git repository
+                if [ -d ".git" ]; then
+                    # Stash any local changes
+                    if ! git diff-index --quiet HEAD 2>/dev/null; then
+                        print_warning "Local modifications detected. Stashing changes..."
+                        git stash save "Auto-backup during update $(date +%Y%m%d_%H%M%S)" 2>/dev/null || true
+                    fi
+
+                    # Fetch and pull latest changes
+                    print_info "Fetching latest updates from GitHub..."
+                    git fetch origin
+                    git checkout main
+                    git pull origin main
+
+                    print_success "Updated to latest version!"
+                    echo ""
+                    print_info "Starting VPS Traffic Reporter..."
+                    sleep 1
+                    exec ./setup.sh
+                else
+                    print_warning "Not a git repository. Cannot auto-update."
+                    print_info "Please reinstall to get the latest version."
+                    echo ""
+                    print_info "Starting VPS Traffic Reporter..."
+                    sleep 1
+                    exec ./setup.sh
+                fi
+                ;;
+            2)
+                print_info "Starting VPS Traffic Reporter..."
+                sleep 1
+                cd "${default_dir}"
+                exec ./setup.sh
+                ;;
+            3|*)
+                print_info "Exiting."
+                exit 0
+                ;;
+        esac
     fi
 }
 
