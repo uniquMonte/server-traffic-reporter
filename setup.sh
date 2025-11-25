@@ -190,9 +190,9 @@ update_configuration() {
     # Traffic Direction
     echo ""
     print_info "Traffic counting mode:"
-    echo "  1) Bidirectional (both directions, RECOMMENDED)"
-    echo "  2) Outbound only (server to client, download)"
-    echo "  3) Inbound only (client to server, upload)"
+    echo "  1) Bidirectional (total traffic, RECOMMENDED)"
+    echo "  2) Outbound only (traffic leaving this VPS)"
+    echo "  3) Inbound only (traffic entering this VPS)"
     read -p "Select traffic mode (1/2/3) [1]: " input < /dev/tty
     TRAFFIC_DIRECTION="${input:-${TRAFFIC_DIRECTION:-1}}"
 
