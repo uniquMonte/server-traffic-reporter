@@ -946,13 +946,13 @@ main() {
             echo "New billing cycle detected. Resetting traffic counter..."
             reset_traffic
 
-            # Send reset notification
-            local message="🔄 *Traffic Counter Reset*\n\n"
-            message="${message}New billing cycle started on $(date +%Y-%m-%d)\n\n"
-            message="${message}Monthly limit: ${MONTHLY_TRAFFIC_LIMIT} GB\n"
-            message="${message}Reset day: ${TRAFFIC_RESET_DAY} of each month"
+            # Send reset notification - DISABLED per user request
+            # local message="🔄 *Traffic Counter Reset*\n\n"
+            # message="${message}New billing cycle started on $(date +%Y-%m-%d)\n\n"
+            # message="${message}Monthly limit: ${MONTHLY_TRAFFIC_LIMIT} GB\n"
+            # message="${message}Reset day: ${TRAFFIC_RESET_DAY} of each month"
 
-            "${SCRIPT_DIR}/telegram_notify.sh" "🔄 Billing Cycle Reset" "${message}"
+            # "${SCRIPT_DIR}/telegram_notify.sh" "🔄 Billing Cycle Reset" "${message}"
         fi
 
         # Send daily report
@@ -980,12 +980,13 @@ main() {
                     echo "⚠️  New billing cycle detected. Resetting traffic counter..."
                     reset_traffic
 
-                    local message="🔄 *Traffic Counter Reset*\n\n"
-                    message="${message}New billing cycle started on $(date +%Y-%m-%d)\n\n"
-                    message="${message}Monthly limit: ${MONTHLY_TRAFFIC_LIMIT} GB\n"
-                    message="${message}Reset day: ${TRAFFIC_RESET_DAY} of each month"
+                    # Send reset notification - DISABLED per user request
+                    # local message="🔄 *Traffic Counter Reset*\n\n"
+                    # message="${message}New billing cycle started on $(date +%Y-%m-%d)\n\n"
+                    # message="${message}Monthly limit: ${MONTHLY_TRAFFIC_LIMIT} GB\n"
+                    # message="${message}Reset day: ${TRAFFIC_RESET_DAY} of each month"
 
-                    "${SCRIPT_DIR}/telegram_notify.sh" "🔄 Billing Cycle Reset" "${message}"
+                    # "${SCRIPT_DIR}/telegram_notify.sh" "🔄 Billing Cycle Reset" "${message}"
                 fi
 
                 send_daily_report
