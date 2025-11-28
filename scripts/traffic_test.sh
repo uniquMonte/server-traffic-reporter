@@ -92,26 +92,27 @@ select_rclone_remote() {
     local remotes=$(rclone listremotes 2>/dev/null | sed 's/:$//')
 
     if [ -z "$remotes" ]; then
-        echo ""
+        echo "" >&2
         return 1
     fi
 
-    echo ""
-    echo -e "${BOLD}${CYAN}======================================"
-    echo -e "  📦 Available Rclone Remotes"
-    echo -e "======================================${NC}"
-    echo ""
+    # Output to terminal (not captured by command substitution)
+    echo "" >&2
+    echo -e "${BOLD}${CYAN}======================================" >&2
+    echo -e "  📦 Available Rclone Remotes" >&2
+    echo -e "======================================${NC}" >&2
+    echo "" >&2
 
     local i=1
     local remote_array=()
     while IFS= read -r remote; do
-        echo -e "  ${GREEN}${i})${NC} ${BOLD}${remote}${NC}"
+        echo -e "  ${GREEN}${i})${NC} ${BOLD}${remote}${NC}" >&2
         remote_array+=("$remote")
         ((i++))
     done <<< "$remotes"
 
-    echo -e "  ${RED}0)${NC} ${BOLD}Cancel${NC}"
-    echo ""
+    echo -e "  ${RED}0)${NC} ${BOLD}Cancel${NC}" >&2
+    echo "" >&2
 
     read -p "$(echo -e ${CYAN}Select remote [1-${#remote_array[@]}]: ${NC})" choice < /dev/tty
 
@@ -119,7 +120,7 @@ select_rclone_remote() {
         echo "${remote_array[$((choice-1))]}"
         return 0
     else
-        echo ""
+        echo "" >&2
         return 1
     fi
 }
