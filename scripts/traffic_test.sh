@@ -3,6 +3,18 @@
 # Traffic Accuracy Test Module
 # This module provides functions to test traffic monitoring accuracy
 
+# Colors for output (will use parent's if available, otherwise define here)
+if [ -z "$RED" ]; then
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[1;33m'
+    BLUE='\033[0;34m'
+    CYAN='\033[0;36m'
+    MAGENTA='\033[0;35m'
+    BOLD='\033[1m'
+    NC='\033[0m' # No Color
+fi
+
 # Function to get current traffic statistics
 get_current_stats() {
     local interface="$1"
@@ -80,32 +92,35 @@ select_rclone_remote() {
     local remotes=$(rclone listremotes 2>/dev/null | sed 's/:$//')
 
     if [ -z "$remotes" ]; then
-        echo ""
+        echo "" >&2
         return 1
     fi
 
-    echo ""
-    echo "Available rclone remotes:"
-    echo ""
+    # Output to terminal (not captured by command substitution)
+    echo "" >&2
+    echo -e "${BOLD}${CYAN}======================================" >&2
+    echo -e "  📦 Available Rclone Remotes" >&2
+    echo -e "======================================${NC}" >&2
+    echo "" >&2
 
     local i=1
     local remote_array=()
     while IFS= read -r remote; do
-        echo "  ${i}) ${remote}"
+        echo -e "  ${GREEN}${i})${NC} ${BOLD}${remote}${NC}" >&2
         remote_array+=("$remote")
         ((i++))
     done <<< "$remotes"
 
-    echo "  0) Cancel"
-    echo ""
+    echo -e "  ${RED}0)${NC} ${BOLD}Cancel${NC}" >&2
+    echo "" >&2
 
-    read -p "Select remote: " choice < /dev/tty
+    read -p "$(echo -e ${CYAN}Select remote [1-${#remote_array[@]}]: ${NC})" choice < /dev/tty
 
     if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#remote_array[@]}" ]; then
         echo "${remote_array[$((choice-1))]}"
         return 0
     else
-        echo ""
+        echo "" >&2
         return 1
     fi
 }
@@ -164,11 +179,15 @@ test_download() {
 
     # Step 3: Download test file
     print_info "Step 3/5: Downloading test file..."
+    echo ""
     local test_file="/tmp/test_download_$(date +%s).tmp"
 
-    if wget -O "${test_file}" "${download_url}" 2>&1 | tee /tmp/wget_output.log | grep -E "saved|downloaded|100%"; then
+    # Download with progress bar
+    if wget --progress=bar:force -O "${test_file}" "${download_url}" 2>&1 | tee /tmp/wget_output.log; then
+        echo ""
         print_success "Download completed"
     else
+        echo ""
         print_error "Download failed"
         rm -f "${test_file}" /tmp/wget_output.log
         read -p "Press Enter to continue..." < /dev/tty
@@ -196,13 +215,17 @@ test_download() {
     local tx_bytes=$(echo "$diff" | cut -d':' -f5)
 
     echo ""
-    echo "📊 Test Results:"
-    echo "  📁 File Size:  ${file_size_gb} GB (${file_size_human})"
+    echo -e "${BOLD}${BLUE}╔════════════════════════════════════╗"
+    echo -e "║       📊 Test Results              ║"
+    echo -e "╚════════════════════════════════════╝${NC}"
     echo ""
-    echo "  📊 Traffic Measured:"
-    echo "     ⬇️  Download: ${rx_gb} GB"
-    echo "     ⬆️  Upload:   ${tx_gb} GB"
-    echo "     📦 Total:    ${total_gb} GB"
+    echo -e "${BOLD}📁 File Size:${NC}"
+    echo -e "   ${GREEN}${file_size_gb} GB${NC} ${CYAN}(${file_size_human})${NC}"
+    echo ""
+    echo -e "${BOLD}📊 Traffic Measured:${NC}"
+    echo -e "   ⬇️  Download: ${CYAN}${rx_gb} GB${NC}"
+    echo -e "   ⬆️  Upload:   ${CYAN}${tx_gb} GB${NC}"
+    echo -e "   📦 Total:    ${BOLD}${CYAN}${total_gb} GB${NC}"
     echo ""
 
     # Accuracy check - compare download traffic to file size
@@ -211,17 +234,17 @@ test_download() {
         # Calculate absolute difference using awk conditional
         local diff_percent=$(awk "BEGIN {d=100-${accuracy}; printf \"%.1f\", (d<0?-d:d)}")
 
-        echo "  🎯 Download Accuracy Analysis:"
-        echo "     Expected: ${file_size_gb} GB"
-        echo "     Measured: ${rx_gb} GB"
-        echo "     Accuracy: ${accuracy}%"
-        echo "     Diff: ${diff_percent}%"
+        echo -e "${BOLD}🎯 Download Accuracy Analysis:${NC}"
+        echo -e "   Expected:  ${GREEN}${file_size_gb} GB${NC}"
+        echo -e "   Measured:  ${CYAN}${rx_gb} GB${NC}"
+        echo -e "   Accuracy:  ${YELLOW}${accuracy}%${NC}"
+        echo -e "   Diff:      ${MAGENTA}${diff_percent}%${NC}"
         echo ""
 
         # Network overhead explanation
         local overhead_percent=$(awk "BEGIN {printf \"%.1f\", ((${rx_bytes}-${file_size_bytes})/${file_size_bytes})*100}")
-        echo "  📡 Network Overhead: ${overhead_percent}%"
-        echo "     (Includes TCP/IP headers, retransmissions, etc.)"
+        echo -e "${BOLD}📡 Network Overhead:${NC} ${YELLOW}${overhead_percent}%${NC}"
+        echo -e "   ${CYAN}(Includes TCP/IP headers, retransmissions, etc.)${NC}"
         echo ""
 
         # Accuracy assessment - use awk for safer comparison
@@ -230,13 +253,13 @@ test_download() {
         local is_fair=$(awk "BEGIN {print (${diff_percent} <= 15 ? 1 : 0)}")
 
         if [ "${is_accurate}" -eq 1 ]; then
-            print_success "✅ Download measurement is ACCURATE (±5%)"
+            echo -e "${BOLD}${GREEN}✅ Download measurement is ACCURATE (±5%)${NC}"
         elif [ "${is_acceptable}" -eq 1 ]; then
-            print_warning "⚠️  Download measurement is acceptable (±10%)"
+            echo -e "${BOLD}${YELLOW}⚠️  Download measurement is acceptable (±10%)${NC}"
         elif [ "${is_fair}" -eq 1 ]; then
-            print_warning "⚠️  Download measurement has expected network overhead (±15%)"
+            echo -e "${BOLD}${YELLOW}⚠️  Download measurement has expected network overhead (±15%)${NC}"
         else
-            print_error "❌ Download measurement may be INACCURATE (>${diff_percent}%)"
+            echo -e "${BOLD}${RED}❌ Download measurement may be INACCURATE (>${diff_percent}%)${NC}"
         fi
     else
         print_error "Cannot calculate accuracy: file size is 0"
@@ -348,14 +371,16 @@ test_upload() {
 
     # Step 2: Create test file
     print_info "Step 2/6: Creating ${file_size_mb}MB test file..."
+    echo ""
     local test_file="/tmp/test_upload_$(date +%s).dat"
-    dd if=/dev/zero of="${test_file}" bs=1M count=${file_size_mb} 2>&1 | grep -E "copied|bytes"
+    dd if=/dev/zero of="${test_file}" bs=1M count=${file_size_mb} status=progress 2>&1 | tail -1
 
     # Get actual file size
     local file_size_bytes=$(get_file_size_bytes "${test_file}")
     local file_size_gb=$(awk "BEGIN {printf \"%.3f\", ${file_size_bytes}/1073741824}")
     local file_size_human=$(bytes_to_human ${file_size_bytes})
 
+    echo ""
     print_success "Test file created: ${file_size_human}"
     echo ""
 
@@ -367,11 +392,15 @@ test_upload() {
 
     # Step 4: Upload test file
     print_info "Step 4/6: Uploading ${file_size_human} to ${remote}..."
+    echo ""
     local remote_path="${remote}:vps-traffic-test/test_upload_$(date +%Y%m%d_%H%M%S).dat"
 
-    if rclone copy "${test_file}" "${remote_path%/*}" --progress 2>&1 | tee /tmp/rclone_output.log | tail -5; then
+    # Upload with cleaner progress display
+    if rclone copy "${test_file}" "${remote_path%/*}" --progress --stats 2s 2>&1 | tee /tmp/rclone_output.log | grep -E "Transferred:|ETA|100%|Errors:"; then
+        echo ""
         print_success "Upload completed"
     else
+        echo ""
         print_error "Upload failed"
         rm -f "${test_file}" /tmp/rclone_output.log
         read -p "Press Enter to continue..." < /dev/tty
@@ -391,13 +420,17 @@ test_upload() {
     local tx_bytes=$(echo "$diff" | cut -d':' -f5)
 
     echo ""
-    echo "📊 Test Results:"
-    echo "  📁 File Size:  ${file_size_gb} GB (${file_size_human})"
+    echo -e "${BOLD}${BLUE}╔════════════════════════════════════╗"
+    echo -e "║       📊 Test Results              ║"
+    echo -e "╚════════════════════════════════════╝${NC}"
     echo ""
-    echo "  📊 Traffic Measured:"
-    echo "     ⬇️  Download: ${rx_gb} GB"
-    echo "     ⬆️  Upload:   ${tx_gb} GB"
-    echo "     📦 Total:    ${total_gb} GB"
+    echo -e "${BOLD}📁 File Size:${NC}"
+    echo -e "   ${GREEN}${file_size_gb} GB${NC} ${CYAN}(${file_size_human})${NC}"
+    echo ""
+    echo -e "${BOLD}📊 Traffic Measured:${NC}"
+    echo -e "   ⬇️  Download: ${CYAN}${rx_gb} GB${NC}"
+    echo -e "   ⬆️  Upload:   ${CYAN}${tx_gb} GB${NC}"
+    echo -e "   📦 Total:    ${BOLD}${CYAN}${total_gb} GB${NC}"
     echo ""
 
     # Accuracy check - compare upload traffic to file size
@@ -406,17 +439,17 @@ test_upload() {
         # Calculate absolute difference using awk conditional
         local diff_percent=$(awk "BEGIN {d=100-${accuracy}; printf \"%.1f\", (d<0?-d:d)}")
 
-        echo "  🎯 Upload Accuracy Analysis:"
-        echo "     Expected: ${file_size_gb} GB"
-        echo "     Measured: ${tx_gb} GB"
-        echo "     Accuracy: ${accuracy}%"
-        echo "     Diff: ${diff_percent}%"
+        echo -e "${BOLD}🎯 Upload Accuracy Analysis:${NC}"
+        echo -e "   Expected:  ${GREEN}${file_size_gb} GB${NC}"
+        echo -e "   Measured:  ${CYAN}${tx_gb} GB${NC}"
+        echo -e "   Accuracy:  ${YELLOW}${accuracy}%${NC}"
+        echo -e "   Diff:      ${MAGENTA}${diff_percent}%${NC}"
         echo ""
 
         # Network overhead explanation
         local overhead_percent=$(awk "BEGIN {printf \"%.1f\", ((${tx_bytes}-${file_size_bytes})/${file_size_bytes})*100}")
-        echo "  📡 Network Overhead: ${overhead_percent}%"
-        echo "     (Includes TCP/IP headers, retransmissions, etc.)"
+        echo -e "${BOLD}📡 Network Overhead:${NC} ${YELLOW}${overhead_percent}%${NC}"
+        echo -e "   ${CYAN}(Includes TCP/IP headers, retransmissions, etc.)${NC}"
         echo ""
 
         # Accuracy assessment - use awk for safer comparison
@@ -425,13 +458,13 @@ test_upload() {
         local is_fair=$(awk "BEGIN {print (${diff_percent} <= 15 ? 1 : 0)}")
 
         if [ "${is_accurate}" -eq 1 ]; then
-            print_success "✅ Upload measurement is ACCURATE (±5%)"
+            echo -e "${BOLD}${GREEN}✅ Upload measurement is ACCURATE (±5%)${NC}"
         elif [ "${is_acceptable}" -eq 1 ]; then
-            print_warning "⚠️  Upload measurement is acceptable (±10%)"
+            echo -e "${BOLD}${YELLOW}⚠️  Upload measurement is acceptable (±10%)${NC}"
         elif [ "${is_fair}" -eq 1 ]; then
-            print_warning "⚠️  Upload measurement has expected network overhead (±15%)"
+            echo -e "${BOLD}${YELLOW}⚠️  Upload measurement has expected network overhead (±15%)${NC}"
         else
-            print_error "❌ Upload measurement may be INACCURATE (>${diff_percent}%)"
+            echo -e "${BOLD}${RED}❌ Upload measurement may be INACCURATE (>${diff_percent}%)${NC}"
         fi
     else
         print_error "Cannot calculate accuracy: file size is 0"
@@ -527,10 +560,8 @@ test_both() {
     esac
     echo ""
 
-    # Get upload size
-    echo "Upload file size:"
-    read -p "Enter size in MB [100]: " upload_size_mb < /dev/tty
-    upload_size_mb=${upload_size_mb:-100}
+    # Note: Upload will use the downloaded file (no need to ask for size)
+    print_info "Note: The downloaded file will be used for upload test"
     echo ""
 
     # Send pre-test snapshot
@@ -552,13 +583,17 @@ test_both() {
     echo ""
 
     print_info "Downloading from: ${download_url}"
+    echo ""
     local download_file="/tmp/test_combined_download_$(date +%s).tmp"
 
-    if wget -O "${download_file}" "${download_url}" 2>&1 | grep -E "saved|downloaded|100%"; then
+    # Download with progress bar
+    if wget --progress=bar:force -O "${download_file}" "${download_url}" 2>&1; then
         local dl_size=$(get_file_size_bytes "${download_file}")
         local dl_size_human=$(bytes_to_human ${dl_size})
+        echo ""
         print_success "Download completed: ${dl_size_human}"
     else
+        echo ""
         print_error "Download failed"
         rm -f "${download_file}"
         read -p "Press Enter to continue..." < /dev/tty
@@ -572,22 +607,25 @@ test_both() {
     echo "======================================"
     echo ""
 
-    print_info "Creating ${upload_size_mb}MB upload file..."
-    local upload_file="/tmp/test_combined_upload_$(date +%s).dat"
-    dd if=/dev/zero of="${upload_file}" bs=1M count=${upload_size_mb} 2>&1 | grep -E "copied|bytes"
-
-    local ul_size=$(get_file_size_bytes "${upload_file}")
-    local ul_size_human=$(bytes_to_human ${ul_size})
+    # Reuse downloaded file for upload test (more efficient and realistic)
+    print_info "Reusing downloaded file for upload test..."
+    local upload_file="${download_file}"
+    local ul_size="${dl_size}"
+    local ul_size_human="${dl_size_human}"
     echo ""
 
     print_info "Uploading ${ul_size_human} to ${remote}..."
+    echo ""
     local remote_path="${remote}:vps-traffic-test/test_combined_$(date +%Y%m%d_%H%M%S).dat"
 
-    if rclone copy "${upload_file}" "${remote_path%/*}" --progress 2>&1 | tail -3; then
+    # Upload with cleaner progress display
+    if rclone copy "${upload_file}" "${remote_path%/*}" --progress --stats 2s 2>&1 | grep -E "Transferred:|ETA|100%|Errors:"; then
+        echo ""
         print_success "Upload completed"
     else
+        echo ""
         print_error "Upload failed"
-        rm -f "${download_file}" "${upload_file}"
+        rm -f "${download_file}"
         read -p "Press Enter to continue..." < /dev/tty
         return 1
     fi
@@ -614,15 +652,19 @@ test_both() {
     local total_expected_gb=$(awk "BEGIN {printf \"%.3f\", (${dl_size}+${ul_size})/1073741824}")
 
     echo ""
-    echo "📁 File Sizes:"
-    echo "   Downloaded: ${dl_size_gb} GB (${dl_size_human})"
-    echo "   Uploaded:   ${ul_size_gb} GB (${ul_size_human})"
-    echo "   Total:      ${total_expected_gb} GB"
+    echo -e "${BOLD}${BLUE}╔════════════════════════════════════╗"
+    echo -e "║   📊 Combined Test Results         ║"
+    echo -e "╚════════════════════════════════════╝${NC}"
     echo ""
-    echo "📊 Traffic Measured:"
-    echo "   ⬇️  Download: ${rx_gb} GB"
-    echo "   ⬆️  Upload:   ${tx_gb} GB"
-    echo "   📦 Total:    ${total_gb} GB"
+    echo -e "${BOLD}📁 File Sizes:${NC}"
+    echo -e "   Downloaded: ${GREEN}${dl_size_gb} GB${NC} ${CYAN}(${dl_size_human})${NC}"
+    echo -e "   Uploaded:   ${GREEN}${ul_size_gb} GB${NC} ${CYAN}(${ul_size_human})${NC}"
+    echo -e "   Total:      ${BOLD}${GREEN}${total_expected_gb} GB${NC}"
+    echo ""
+    echo -e "${BOLD}📊 Traffic Measured:${NC}"
+    echo -e "   ⬇️  Download: ${CYAN}${rx_gb} GB${NC}"
+    echo -e "   ⬆️  Upload:   ${CYAN}${tx_gb} GB${NC}"
+    echo -e "   📦 Total:    ${BOLD}${CYAN}${total_gb} GB${NC}"
     echo ""
 
     # Accuracy checks
@@ -632,10 +674,10 @@ test_both() {
     local total_measured_bytes=$((rx_bytes + tx_bytes))
     local total_accuracy=$(awk "BEGIN {printf \"%.1f\", (${total_measured_bytes}/${total_expected_bytes})*100}")
 
-    echo "📈 Accuracy Analysis:"
-    echo "   Download: ${dl_accuracy}%"
-    echo "   Upload:   ${ul_accuracy}%"
-    echo "   Total:    ${total_accuracy}%"
+    echo -e "${BOLD}📈 Accuracy Analysis:${NC}"
+    echo -e "   Download: ${YELLOW}${dl_accuracy}%${NC}"
+    echo -e "   Upload:   ${YELLOW}${ul_accuracy}%${NC}"
+    echo -e "   Total:    ${BOLD}${YELLOW}${total_accuracy}%${NC}"
     echo ""
 
     # Overall assessment
@@ -648,18 +690,18 @@ test_both() {
     local is_fair=$(awk "BEGIN {print (${total_diff} <= 15 ? 1 : 0)}")
 
     if [ "${is_accurate}" -eq 1 ]; then
-        print_success "✅ Traffic measurement is ACCURATE (±5%)"
+        echo -e "${BOLD}${GREEN}✅ Traffic measurement is ACCURATE (±5%)${NC}"
     elif [ "${is_acceptable}" -eq 1 ]; then
-        print_warning "⚠️  Traffic measurement is acceptable (±10%)"
+        echo -e "${BOLD}${YELLOW}⚠️  Traffic measurement is acceptable (±10%)${NC}"
     elif [ "${is_fair}" -eq 1 ]; then
-        print_warning "⚠️  Traffic measurement has expected network overhead (±15%)"
+        echo -e "${BOLD}${YELLOW}⚠️  Traffic measurement has expected network overhead (±15%)${NC}"
     else
-        print_error "❌ Traffic measurement may be INACCURATE (>${total_diff}%)"
+        echo -e "${BOLD}${RED}❌ Traffic measurement may be INACCURATE (>${total_diff}%)${NC}"
     fi
     echo ""
 
-    # Clean up
-    rm -f "${download_file}" "${upload_file}"
+    # Clean up (download_file and upload_file are the same, so only delete once)
+    rm -f "${download_file}"
 
     # Send post-test snapshot
     print_info "Sending post-test traffic snapshot to Telegram..."
@@ -687,10 +729,9 @@ show_traffic_test_menu() {
         echo "  - Accounting for network overhead"
         echo "  - Sending before/after snapshots to Telegram"
         echo ""
-        echo "1) 📥 Test Download"
-        echo "2) 📤 Test Upload"
-        echo "3) 📊 Test Both (Download + Upload)"
-        echo "4) ℹ️  Requirements & Info"
+        echo "1) 📥 Test Download Only"
+        echo "2) 📤 Test Upload Only"
+        echo "3) 📊 Test Both (Recommended)"
         echo "0) ⬅️  Back to Main Menu"
         echo ""
         read -p "Select an option: " choice < /dev/tty
@@ -705,45 +746,6 @@ show_traffic_test_menu() {
                 ;;
             3)
                 test_both
-                ;;
-            4)
-                clear
-                echo "======================================"
-                echo "  ℹ️  Requirements & Information"
-                echo "======================================"
-                echo ""
-                echo "📥 Download Test:"
-                echo "  - Default: 100MB from speedtest.tele2.net"
-                echo "  - Or use custom download URL"
-                echo "  - Automatically detects file size"
-                echo "  - Compares traffic to actual file size"
-                echo "  - No additional requirements"
-                echo ""
-                echo "📤 Upload Test:"
-                echo "  - Requires rclone installation & configuration"
-                echo "  - Choose file size (10/50/100/200 MB or custom)"
-                echo "  - Uploads to your configured cloud storage"
-                echo "  - Install: curl https://rclone.org/install.sh | sudo bash"
-                echo "  - Configure: rclone config"
-                echo ""
-                echo "📊 Combined Test:"
-                echo "  - Tests both download and upload"
-                echo "  - Customizable file sizes"
-                echo "  - Comprehensive accuracy assessment"
-                echo ""
-                echo "🎯 Accuracy Standards:"
-                echo "  - ✅ Excellent: ±5% (accounting for TCP/IP overhead)"
-                echo "  - ⚠️  Good: ±10% (acceptable variation)"
-                echo "  - ⚠️  Fair: ±15% (expected network overhead)"
-                echo "  - ❌ Poor: >±15% (may indicate issues)"
-                echo ""
-                echo "💡 Notes:"
-                echo "  - Network overhead is normal (TCP/IP headers, etc.)"
-                echo "  - Actual traffic = File size + Protocol overhead"
-                echo "  - Typical overhead: 5-15% depending on network"
-                echo "  - Tests send Telegram notifications before/after"
-                echo ""
-                read -p "Press Enter to continue..." < /dev/tty
                 ;;
             0|"")
                 return 0
