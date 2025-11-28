@@ -88,16 +88,17 @@ bytes_to_gb() {
 }
 
 # Function to initialize traffic database
+# Uses UTC time to match VPS provider billing cycles
 init_traffic_db() {
     if [ ! -f "${TRAFFIC_DATA_FILE}" ]; then
-        echo "# Traffic Database" > "${TRAFFIC_DATA_FILE}"
+        echo "# Traffic Database (UTC)" > "${TRAFFIC_DATA_FILE}"
         echo "# Format: DATE|DAILY_BYTES|CUMULATIVE_BYTES|DAILY_RX|DAILY_TX|CUMULATIVE_RX|CUMULATIVE_TX|baseline_rx=RX|baseline_tx=TX" >> "${TRAFFIC_DATA_FILE}"
 
-        # For first-time initialization, use TODAY as the reset date
+        # For first-time initialization, use TODAY (UTC) as the reset date
         # This is more intuitive for new VPS deployments
         # The cycle will auto-reset on the configured reset day going forward
-        local today=$(date +%Y-%m-%d)
-        local current_month=$(date +%Y-%m)
+        local today=$(date -u +%Y-%m-%d)
+        local current_month=$(date -u +%Y-%m)
 
         # Write today as the reset date
         echo "RESET|${today}|0|${current_month}" >> "${TRAFFIC_DATA_FILE}"
@@ -108,19 +109,20 @@ init_traffic_db() {
         local tx_bytes=$(echo "${current_traffic}" | awk '{print $2}')
         echo "${today}|0|0|0|0|0|0|baseline_rx=${rx_bytes}|baseline_tx=${tx_bytes}" >> "${TRAFFIC_DATA_FILE}"
 
-        echo "Initialized traffic database with reset date: ${today} (first run)"
-        echo "Future resets will occur on day ${TRAFFIC_RESET_DAY} of each month"
+        echo "Initialized traffic database with reset date: ${today} (UTC, first run)"
+        echo "Future resets will occur on day ${TRAFFIC_RESET_DAY} of each month (UTC)"
     fi
 }
 
 # Function to check if we need to reset (new billing cycle)
+# Uses UTC time to match VPS provider billing cycles
 need_reset() {
-    local current_month=$(date +%Y-%m)
-    local current_date=$(date +%Y-%m-%d)
+    local current_month=$(date -u +%Y-%m)
+    local current_date=$(date -u +%Y-%m-%d)
     local reset_day=${TRAFFIC_RESET_DAY}
 
-    # Get the number of days in current month
-    local days_in_month=$(date -d "${current_month}-01 +1 month -1 day" +%d)
+    # Get the number of days in current month (UTC)
+    local days_in_month=$(date -u -d "${current_month}-01 +1 month -1 day" +%d)
 
     # If reset day exceeds days in month, use last day of month
     # Example: reset_day=31 in February (28/29 days) → use 28/29
@@ -169,26 +171,27 @@ need_reset() {
 }
 
 # Function to reset traffic counter
+# Uses UTC time to match VPS provider billing cycles
 reset_traffic() {
-    local reset_date=$(date +%Y-%m-%d)
+    local reset_date=$(date -u +%Y-%m-%d)
 
     # Backup old data
     if [ -f "${TRAFFIC_DATA_FILE}" ]; then
         cp "${TRAFFIC_DATA_FILE}" "${TRAFFIC_DATA_FILE}.backup.$(date +%Y%m%d_%H%M%S)"
     fi
 
-    # Create new database with reset marker
-    echo "# Traffic Database - Reset on ${reset_date}" > "${TRAFFIC_DATA_FILE}"
+    # Create new database with reset marker (using UTC date)
+    echo "# Traffic Database - Reset on ${reset_date} (UTC)" > "${TRAFFIC_DATA_FILE}"
     echo "# Format: DATE|DAILY_BYTES|CUMULATIVE_BYTES|DAILY_RX|DAILY_TX|CUMULATIVE_RX|CUMULATIVE_TX|baseline_rx=RX|baseline_tx=TX" >> "${TRAFFIC_DATA_FILE}"
-    echo "RESET|${reset_date}|0|$(date +%Y-%m)" >> "${TRAFFIC_DATA_FILE}"
+    echo "RESET|${reset_date}|0|$(date -u +%Y-%m)" >> "${TRAFFIC_DATA_FILE}"
 
     # Record the baseline traffic
     local current_traffic=$(get_current_traffic_detailed "${NETWORK_INTERFACE}")
     local rx_bytes=$(echo "${current_traffic}" | awk '{print $1}')
     local tx_bytes=$(echo "${current_traffic}" | awk '{print $2}')
-    echo "$(date +%Y-%m-%d)|0|0|0|0|0|0|baseline_rx=${rx_bytes}|baseline_tx=${tx_bytes}" >> "${TRAFFIC_DATA_FILE}"
+    echo "$(date -u +%Y-%m-%d)|0|0|0|0|0|0|baseline_rx=${rx_bytes}|baseline_tx=${tx_bytes}" >> "${TRAFFIC_DATA_FILE}"
 
-    echo "Traffic counter reset for new billing cycle starting ${reset_date}"
+    echo "Traffic counter reset for new billing cycle starting ${reset_date} (UTC)"
 }
 
 # Function to get baseline traffic (traffic at last measurement)
@@ -336,9 +339,9 @@ get_cumulative_traffic_detailed() {
     echo "${cumulative_rx} ${cumulative_tx}"
 }
 
-# Function to get today's traffic
+# Function to get today's traffic (UTC)
 get_daily_traffic() {
-    local today=$(date +%Y-%m-%d)
+    local today=$(date -u +%Y-%m-%d)
     local current_cumulative=$(get_cumulative_traffic)
 
     # Find today's starting cumulative (first entry of today, or last entry of yesterday)
@@ -349,7 +352,7 @@ get_daily_traffic() {
 
     if [ -n "${today_first_entry}" ]; then
         # Today has entries, get the cumulative from yesterday's last entry
-        local yesterday=$(date -d "${today} -1 day" +%Y-%m-%d 2>/dev/null || date -d "yesterday" +%Y-%m-%d)
+        local yesterday=$(date -u -d "${today} -1 day" +%Y-%m-%d 2>/dev/null || date -u -d "yesterday" +%Y-%m-%d)
         local yesterday_last=$(grep -v "^#" "${TRAFFIC_DATA_FILE}" | grep "^${yesterday}|" | tail -1 | cut -d'|' -f3 2>/dev/null || echo "")
 
         if [ -n "${yesterday_last}" ]; then
@@ -374,10 +377,10 @@ get_daily_traffic() {
     echo "${daily}"
 }
 
-# Function to get today's traffic with detailed rx/tx breakdown
+# Function to get today's traffic with detailed rx/tx breakdown (UTC)
 # Output format: "daily_rx daily_tx"
 get_daily_traffic_detailed() {
-    local today=$(date +%Y-%m-%d)
+    local today=$(date -u +%Y-%m-%d)
     local current_cumulative=$(get_cumulative_traffic_detailed)
     local current_cumulative_rx=$(echo "${current_cumulative}" | awk '{print $1}')
     local current_cumulative_tx=$(echo "${current_cumulative}" | awk '{print $2}')
@@ -391,7 +394,7 @@ get_daily_traffic_detailed() {
 
     if [ -n "${today_first_entry}" ]; then
         # Today has entries, get the cumulative from yesterday's last entry
-        local yesterday=$(date -d "${today} -1 day" +%Y-%m-%d 2>/dev/null || date -d "yesterday" +%Y-%m-%d)
+        local yesterday=$(date -u -d "${today} -1 day" +%Y-%m-%d 2>/dev/null || date -u -d "yesterday" +%Y-%m-%d)
         local yesterday_last=$(grep -v "^#" "${TRAFFIC_DATA_FILE}" | grep "^${yesterday}|" | tail -1)
 
         if [ -n "${yesterday_last}" ]; then
@@ -462,7 +465,7 @@ get_progress_bar() {
     echo "${bar}"
 }
 
-# Function to get days since reset
+# Function to get days since reset (UTC)
 get_days_since_reset() {
     # Get the reset date from database
     local reset_date=$(grep "RESET|" "${TRAFFIC_DATA_FILE}" 2>/dev/null | tail -1 | cut -d'|' -f2 || echo "")
@@ -472,10 +475,10 @@ get_days_since_reset() {
         return
     fi
 
-    # Calculate days between reset date and today
-    local today=$(date +%Y-%m-%d)
-    local reset_timestamp=$(date -d "${reset_date}" +%s 2>/dev/null || echo "0")
-    local today_timestamp=$(date -d "${today}" +%s 2>/dev/null || echo "0")
+    # Calculate days between reset date and today (UTC)
+    local today=$(date -u +%Y-%m-%d)
+    local reset_timestamp=$(date -u -d "${reset_date}" +%s 2>/dev/null || echo "0")
+    local today_timestamp=$(date -u -d "${today}" +%s 2>/dev/null || echo "0")
 
     if [ "${reset_timestamp}" -eq 0 ] || [ "${today_timestamp}" -eq 0 ]; then
         echo "1"
@@ -622,10 +625,10 @@ send_daily_report() {
         fi
     fi
 
-    # Get billing cycle info
+    # Get billing cycle info (UTC)
     local reset_day=$(printf "%02d" ${TRAFFIC_RESET_DAY})
-    local current_month=$(date +%Y-%m)
-    local today_date=$(date +%Y-%m-%d)
+    local current_month=$(date -u +%Y-%m)
+    local today_date=$(date -u +%Y-%m-%d)
 
     # Get the last reset date from database
     local last_reset_line=$(grep "RESET|" "${TRAFFIC_DATA_FILE}" 2>/dev/null | tail -1)
@@ -633,7 +636,7 @@ send_daily_report() {
 
     # Calculate the next reset date
     # Check if reset day has passed this month
-    local current_day=$(date +%d)
+    local current_day=$(date -u +%d)
     local reset_date_this_month="${current_month}-${reset_day}"
     local next_reset_date=""
 
@@ -642,14 +645,14 @@ send_daily_report() {
         next_reset_date="${reset_date_this_month}"
     else
         # Reset day has passed, next reset is next month
-        local next_month=$(date -d "${current_month}-01 +1 month" +%Y-%m)
+        local next_month=$(date -u -d "${current_month}-01 +1 month" +%Y-%m)
         next_reset_date="${next_month}-${reset_day}"
     fi
 
-    # Calculate cycle length and remaining days
-    local last_reset_timestamp=$(date -d "${last_reset_date}" +%s 2>/dev/null || date +%s)
-    local next_reset_timestamp=$(date -d "${next_reset_date}" +%s 2>/dev/null || date +%s)
-    local today_timestamp=$(date -d "${today_date}" +%s)
+    # Calculate cycle length and remaining days (UTC)
+    local last_reset_timestamp=$(date -u -d "${last_reset_date}" +%s 2>/dev/null || date -u +%s)
+    local next_reset_timestamp=$(date -u -d "${next_reset_date}" +%s 2>/dev/null || date -u +%s)
+    local today_timestamp=$(date -u -d "${today_date}" +%s)
 
     local cycle_length_days=$(( (next_reset_timestamp - last_reset_timestamp) / 86400 ))
     # Subtract 1 because reset day is not included in the count of remaining days
@@ -731,8 +734,8 @@ send_daily_report() {
     # Send notification
     "${SCRIPT_DIR}/telegram_notify.sh" "📊 Daily Traffic Report" "${message}"
 
-    # Record today's data
-    local today=$(date +%Y-%m-%d)
+    # Record today's data (UTC)
+    local today=$(date -u +%Y-%m-%d)
     local current_traffic=$(get_current_traffic_detailed "${NETWORK_INTERFACE}")
     local baseline_rx=$(echo "${current_traffic}" | awk '{print $1}')
     local baseline_tx=$(echo "${current_traffic}" | awk '{print $2}')
@@ -949,7 +952,7 @@ manual_reset_database() {
     # Send notification
     local message="🔄 *Manual Database Reset*\n\n"
     message="${message}Database has been manually reset by administrator.\n\n"
-    message="${message}Reset date: $(date +%Y-%m-%d)\n"
+    message="${message}Reset date: $(date -u +%Y-%m-%d) UTC\n"
     message="${message}Monthly limit: ${MONTHLY_TRAFFIC_LIMIT} GB\n"
     message="${message}Format: Detailed with RX/TX breakdown"
 
