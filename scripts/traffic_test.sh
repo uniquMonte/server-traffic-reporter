@@ -87,6 +87,113 @@ check_rclone() {
     return 0
 }
 
+# Function to install rclone
+install_rclone() {
+    echo ""
+    print_warning "rclone is not installed on your system."
+    echo ""
+    echo -e "${CYAN}ℹ️  About rclone:${NC}"
+    echo "  rclone is a powerful command-line tool for managing cloud storage."
+    echo "  It's required for upload testing to measure traffic accuracy."
+    echo ""
+
+    read -p "Would you like to install rclone now? (press Enter to install, or 'n' to skip): " install_choice < /dev/tty
+    install_choice=${install_choice:-Y}
+
+    if [[ ! "$install_choice" =~ ^[Yy]$ ]]; then
+        print_info "Skipping rclone installation."
+        return 1
+    fi
+
+    echo ""
+    print_info "Installing rclone..."
+
+    if curl -fsSL https://rclone.org/install.sh | bash; then
+        print_success "rclone installed successfully!"
+        echo ""
+        return 0
+    else
+        print_error "Failed to install rclone"
+        echo ""
+        return 1
+    fi
+}
+
+# Function to configure rclone
+configure_rclone() {
+    echo ""
+    print_info "rclone needs to be configured with your cloud storage provider."
+    echo ""
+    echo -e "${CYAN}📝 Configuration steps:${NC}"
+    echo "  1. Choose a cloud storage service (Google Drive, Dropbox, OneDrive, etc.)"
+    echo "  2. Follow the prompts to authenticate and set up the connection"
+    echo "  3. Give your remote a memorable name"
+    echo ""
+
+    read -p "Would you like to configure rclone now? (press Enter to configure, or 'n' to skip): " config_choice < /dev/tty
+    config_choice=${config_choice:-Y}
+
+    if [[ ! "$config_choice" =~ ^[Yy]$ ]]; then
+        echo ""
+        print_info "You can configure rclone later by running: ${BOLD}rclone config${NC}"
+        echo ""
+        return 1
+    fi
+
+    echo ""
+    rclone config
+
+    # Check if configuration was successful
+    local remotes=$(rclone listremotes 2>/dev/null)
+    if [ -z "$remotes" ]; then
+        echo ""
+        print_warning "No remotes configured. You can configure rclone later with: ${BOLD}rclone config${NC}"
+        echo ""
+        return 1
+    fi
+
+    echo ""
+    print_success "rclone configured successfully!"
+    echo ""
+    return 0
+}
+
+# Function to ensure rclone is installed and configured
+ensure_rclone() {
+    # Check if rclone is installed
+    if ! command -v rclone &> /dev/null; then
+        install_rclone
+        if [ $? -ne 0 ]; then
+            return 1  # Installation failed or user declined
+        fi
+
+        # After installation, offer to configure
+        configure_rclone
+        if [ $? -ne 0 ]; then
+            return 2  # Installed but not configured
+        fi
+
+        return 0
+    fi
+
+    # rclone is installed, check if it has any remotes configured
+    local remotes=$(rclone listremotes 2>/dev/null)
+    if [ -z "$remotes" ]; then
+        echo ""
+        print_warning "rclone is installed but has no cloud storage configured."
+
+        configure_rclone
+        if [ $? -ne 0 ]; then
+            return 2  # Not configured
+        fi
+
+        return 0
+    fi
+
+    # rclone is installed and configured
+    return 0
+}
+
 # Function to list rclone remotes and let user choose
 select_rclone_remote() {
     local remotes=$(rclone listremotes 2>/dev/null | sed 's/:$//')
@@ -299,23 +406,14 @@ test_upload() {
     echo "======================================"
     echo ""
 
-    # Check rclone
-    check_rclone
+    # Ensure rclone is installed and configured
+    ensure_rclone
     local rclone_status=$?
 
-    if [ $rclone_status -eq 1 ]; then
-        print_error "rclone is not installed!"
+    if [ $rclone_status -ne 0 ]; then
+        # User declined installation or configuration not complete
         echo ""
-        print_info "Please install rclone first:"
-        echo "  curl https://rclone.org/install.sh | sudo bash"
-        echo ""
-        read -p "Press Enter to continue..." < /dev/tty
-        return 1
-    elif [ $rclone_status -eq 2 ]; then
-        print_error "rclone is not configured!"
-        echo ""
-        print_info "Please configure rclone first:"
-        echo "  rclone config"
+        print_info "Upload test requires rclone to be installed and configured."
         echo ""
         read -p "Press Enter to continue..." < /dev/tty
         return 1
@@ -529,18 +627,29 @@ test_both() {
     echo "======================================"
     echo ""
 
-    # Check rclone first
-    check_rclone
+    # Ensure rclone is installed and configured
+    ensure_rclone
     local rclone_status=$?
 
-    if [ $rclone_status -ne 0 ]; then
-        print_error "rclone is required for upload test!"
+    if [ $rclone_status -eq 1 ]; then
+        # User declined installation or installation failed
+        echo ""
+        print_info "Upload test requires rclone. You can:"
+        echo "  1. Run download test only (option 1 from menu)"
+        echo "  2. Install rclone manually and try again"
         echo ""
         read -p "Continue with download test only? (y/N): " confirm < /dev/tty
         if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
             return 0
         fi
         test_download
+        return 0
+    elif [ $rclone_status -eq 2 ]; then
+        # Installed but not configured
+        echo ""
+        print_warning "rclone is installed but not configured."
+        print_info "Please run 'rclone config' to set up your cloud storage, then try again."
+        echo ""
         return 0
     fi
 
