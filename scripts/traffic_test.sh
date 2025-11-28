@@ -179,8 +179,12 @@ test_download() {
 
     # Step 3: Download test file
     print_info "Step 3/5: Downloading test file..."
-    echo ""
     local test_file="/tmp/test_download_$(date +%s).tmp"
+    echo ""
+    echo -e "${CYAN}📍 Local file location:${NC} ${test_file}"
+    echo -e "${CYAN}🔗 Download URL:${NC} ${download_url}"
+    echo -e "${YELLOW}ℹ️  Note: This file will be deleted after test completes${NC}"
+    echo ""
 
     # Download with progress bar
     if wget --progress=bar:force -O "${test_file}" "${download_url}" 2>&1 | tee /tmp/wget_output.log; then
@@ -267,7 +271,10 @@ test_download() {
     echo ""
 
     # Clean up
+    print_info "Cleaning up local test file..."
     rm -f "${test_file}" /tmp/wget_output.log
+    print_success "Local file deleted: ${test_file}"
+    echo ""
 
     # Step 5: Send post-test snapshot
     print_info "Step 5/5: Sending post-test traffic snapshot to Telegram..."
@@ -371,8 +378,12 @@ test_upload() {
 
     # Step 2: Create test file
     print_info "Step 2/6: Creating ${file_size_mb}MB test file..."
-    echo ""
     local test_file="/tmp/test_upload_$(date +%s).dat"
+    echo ""
+    echo -e "${CYAN}📍 Local file location:${NC} ${test_file}"
+    echo -e "${CYAN}📦 File size:${NC} ${file_size_mb} MB"
+    echo -e "${YELLOW}ℹ️  Note: This file will be deleted after test completes${NC}"
+    echo ""
     dd if=/dev/zero of="${test_file}" bs=1M count=${file_size_mb} status=progress 2>&1 | tail -1
 
     # Get actual file size
@@ -392,8 +403,11 @@ test_upload() {
 
     # Step 4: Upload test file
     print_info "Step 4/6: Uploading ${file_size_human} to ${remote}..."
-    echo ""
     local remote_path="${remote}:vps-traffic-test/test_upload_$(date +%Y%m%d_%H%M%S).dat"
+    echo ""
+    echo -e "${CYAN}🚀 Upload destination:${NC} ${remote_path}"
+    echo -e "${YELLOW}ℹ️  Note: Remote file will be kept for your review${NC}"
+    echo ""
 
     # Upload with cleaner progress display
     if rclone copy "${test_file}" "${remote_path%/*}" --progress --stats 2s 2>&1 | tee /tmp/rclone_output.log | grep -E "Transferred:|ETA|100%|Errors:"; then
@@ -487,7 +501,10 @@ test_upload() {
     echo ""
 
     # Clean up
+    print_info "Cleaning up local test file..."
     rm -f "${test_file}" /tmp/rclone_output.log
+    print_success "Local file deleted: ${test_file}"
+    echo ""
 
     # Step 6: Send post-test snapshot
     print_info "Step 6/6: Sending post-test traffic snapshot to Telegram..."
@@ -596,8 +613,12 @@ test_both() {
     echo ""
 
     print_info "Downloading from: ${download_url}"
-    echo ""
     local download_file="/tmp/test_combined_download_$(date +%s).tmp"
+    echo ""
+    echo -e "${CYAN}📍 Local file location:${NC} ${download_file}"
+    echo -e "${CYAN}🔗 Download URL:${NC} ${download_url}"
+    echo -e "${YELLOW}ℹ️  Note: This file will be used for upload test, then deleted${NC}"
+    echo ""
 
     # Download with progress bar
     if wget --progress=bar:force -O "${download_file}" "${download_url}" 2>&1; then
@@ -625,11 +646,12 @@ test_both() {
     local upload_file="${download_file}"
     local ul_size="${dl_size}"
     local ul_size_human="${dl_size_human}"
-    echo ""
-
-    print_info "Uploading ${ul_size_human} to ${remote}..."
-    echo ""
     local remote_path="${remote}:vps-traffic-test/test_combined_$(date +%Y%m%d_%H%M%S).dat"
+    echo ""
+    echo -e "${CYAN}📂 Using file:${NC} ${download_file}"
+    echo -e "${CYAN}🚀 Upload destination:${NC} ${remote_path}"
+    echo -e "${YELLOW}ℹ️  Note: Remote file will be kept, local file will be deleted${NC}"
+    echo ""
 
     # Upload with cleaner progress display
     if rclone copy "${upload_file}" "${remote_path%/*}" --progress --stats 2s 2>&1 | grep -E "Transferred:|ETA|100%|Errors:"; then
@@ -729,7 +751,10 @@ test_both() {
     echo ""
 
     # Clean up (download_file and upload_file are the same, so only delete once)
+    print_info "Cleaning up local test file..."
     rm -f "${download_file}"
+    print_success "Local file deleted: ${download_file}"
+    echo ""
 
     # Send post-test snapshot
     print_info "Sending post-test traffic snapshot to Telegram..."
