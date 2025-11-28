@@ -114,9 +114,13 @@ select_rclone_remote() {
     echo -e "  ${RED}0)${NC} ${BOLD}Cancel${NC}" >&2
     echo "" >&2
 
-    read -p "$(echo -e ${CYAN}Select remote [1-${#remote_array[@]}]: ${NC})" choice < /dev/tty
+    read -p "$(echo -e ${CYAN}Select remote [press Enter for remote 1, or 1-${#remote_array[@]}]: ${NC})" choice < /dev/tty
+    choice=${choice:-1}
 
-    if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#remote_array[@]}" ]; then
+    if [[ "$choice" == "0" ]]; then
+        echo "" >&2
+        return 1
+    elif [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#remote_array[@]}" ]; then
         echo "${remote_array[$((choice-1))]}"
         return 0
     else
