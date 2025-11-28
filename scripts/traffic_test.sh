@@ -471,11 +471,23 @@ test_upload() {
     fi
     echo ""
 
+    # Show uploaded file location prominently
+    echo -e "${BOLD}${GREEN}╔════════════════════════════════════╗"
+    echo -e "║  📁 Uploaded File Location         ║"
+    echo -e "╚════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "${CYAN}Remote path:${NC}"
+    echo -e "  ${BOLD}${remote_path}${NC}"
+    echo ""
+    echo -e "${YELLOW}To view uploaded files:${NC}"
+    echo -e "  ${BOLD}rclone ls ${remote}:vps-traffic-test/${NC}"
+    echo ""
+    echo -e "${YELLOW}To delete test files:${NC}"
+    echo -e "  ${BOLD}rclone delete ${remote}:vps-traffic-test/${NC}"
+    echo ""
+
     # Clean up
     rm -f "${test_file}" /tmp/rclone_output.log
-
-    print_info "Note: Uploaded file location: ${remote_path}"
-    echo ""
 
     # Step 6: Send post-test snapshot
     print_info "Step 6/6: Sending post-test traffic snapshot to Telegram..."
@@ -699,6 +711,21 @@ test_both() {
     else
         echo -e "${BOLD}${RED}❌ Traffic measurement may be INACCURATE (>${total_diff}%)${NC}"
     fi
+    echo ""
+
+    # Show uploaded file location prominently
+    echo -e "${BOLD}${GREEN}╔════════════════════════════════════╗"
+    echo -e "║  📁 Uploaded File Location         ║"
+    echo -e "╚════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "${CYAN}Remote path:${NC}"
+    echo -e "  ${BOLD}${remote_path}${NC}"
+    echo ""
+    echo -e "${YELLOW}To view uploaded files:${NC}"
+    echo -e "  ${BOLD}rclone ls ${remote}:vps-traffic-test/${NC}"
+    echo ""
+    echo -e "${YELLOW}To delete test files:${NC}"
+    echo -e "  ${BOLD}rclone delete ${remote}:vps-traffic-test/${NC}"
     echo ""
 
     # Clean up (download_file and upload_file are the same, so only delete once)
