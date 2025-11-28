@@ -208,7 +208,8 @@ test_download() {
     # Accuracy check - compare download traffic to file size
     if [ "${file_size_bytes}" -gt 0 ]; then
         local accuracy=$(awk "BEGIN {printf \"%.1f\", (${rx_bytes}/${file_size_bytes})*100}")
-        local diff_percent=$(awk "BEGIN {printf \"%.1f\", abs(100-${accuracy})}")
+        # Calculate absolute difference using awk conditional
+        local diff_percent=$(awk "BEGIN {d=100-${accuracy}; printf \"%.1f\", (d<0?-d:d)}")
 
         echo "  🎯 Download Accuracy Analysis:"
         echo "     Expected: ${file_size_gb} GB"
@@ -223,12 +224,16 @@ test_download() {
         echo "     (Includes TCP/IP headers, retransmissions, etc.)"
         echo ""
 
-        # Accuracy assessment
-        if (( $(echo "${diff_percent} <= 5" | bc -l) )); then
+        # Accuracy assessment - use awk for safer comparison
+        local is_accurate=$(awk "BEGIN {print (${diff_percent} <= 5 ? 1 : 0)}")
+        local is_acceptable=$(awk "BEGIN {print (${diff_percent} <= 10 ? 1 : 0)}")
+        local is_fair=$(awk "BEGIN {print (${diff_percent} <= 15 ? 1 : 0)}")
+
+        if [ "${is_accurate}" -eq 1 ]; then
             print_success "✅ Download measurement is ACCURATE (±5%)"
-        elif (( $(echo "${diff_percent} <= 10" | bc -l) )); then
+        elif [ "${is_acceptable}" -eq 1 ]; then
             print_warning "⚠️  Download measurement is acceptable (±10%)"
-        elif (( $(echo "${diff_percent} <= 15" | bc -l) )); then
+        elif [ "${is_fair}" -eq 1 ]; then
             print_warning "⚠️  Download measurement has expected network overhead (±15%)"
         else
             print_error "❌ Download measurement may be INACCURATE (>${diff_percent}%)"
@@ -398,7 +403,8 @@ test_upload() {
     # Accuracy check - compare upload traffic to file size
     if [ "${file_size_bytes}" -gt 0 ]; then
         local accuracy=$(awk "BEGIN {printf \"%.1f\", (${tx_bytes}/${file_size_bytes})*100}")
-        local diff_percent=$(awk "BEGIN {printf \"%.1f\", abs(100-${accuracy})}")
+        # Calculate absolute difference using awk conditional
+        local diff_percent=$(awk "BEGIN {d=100-${accuracy}; printf \"%.1f\", (d<0?-d:d)}")
 
         echo "  🎯 Upload Accuracy Analysis:"
         echo "     Expected: ${file_size_gb} GB"
@@ -413,12 +419,16 @@ test_upload() {
         echo "     (Includes TCP/IP headers, retransmissions, etc.)"
         echo ""
 
-        # Accuracy assessment
-        if (( $(echo "${diff_percent} <= 5" | bc -l) )); then
+        # Accuracy assessment - use awk for safer comparison
+        local is_accurate=$(awk "BEGIN {print (${diff_percent} <= 5 ? 1 : 0)}")
+        local is_acceptable=$(awk "BEGIN {print (${diff_percent} <= 10 ? 1 : 0)}")
+        local is_fair=$(awk "BEGIN {print (${diff_percent} <= 15 ? 1 : 0)}")
+
+        if [ "${is_accurate}" -eq 1 ]; then
             print_success "✅ Upload measurement is ACCURATE (±5%)"
-        elif (( $(echo "${diff_percent} <= 10" | bc -l) )); then
+        elif [ "${is_acceptable}" -eq 1 ]; then
             print_warning "⚠️  Upload measurement is acceptable (±10%)"
-        elif (( $(echo "${diff_percent} <= 15" | bc -l) )); then
+        elif [ "${is_fair}" -eq 1 ]; then
             print_warning "⚠️  Upload measurement has expected network overhead (±15%)"
         else
             print_error "❌ Upload measurement may be INACCURATE (>${diff_percent}%)"
@@ -629,12 +639,19 @@ test_both() {
     echo ""
 
     # Overall assessment
-    local total_diff=$(awk "BEGIN {printf \"%.1f\", abs(100-${total_accuracy})}")
-    if (( $(echo "${total_diff} <= 5" | bc -l) )); then
+    # Calculate absolute difference using awk conditional
+    local total_diff=$(awk "BEGIN {d=100-${total_accuracy}; printf \"%.1f\", (d<0?-d:d)}")
+
+    # Use awk for safer comparison
+    local is_accurate=$(awk "BEGIN {print (${total_diff} <= 5 ? 1 : 0)}")
+    local is_acceptable=$(awk "BEGIN {print (${total_diff} <= 10 ? 1 : 0)}")
+    local is_fair=$(awk "BEGIN {print (${total_diff} <= 15 ? 1 : 0)}")
+
+    if [ "${is_accurate}" -eq 1 ]; then
         print_success "✅ Traffic measurement is ACCURATE (±5%)"
-    elif (( $(echo "${total_diff} <= 10" | bc -l) )); then
+    elif [ "${is_acceptable}" -eq 1 ]; then
         print_warning "⚠️  Traffic measurement is acceptable (±10%)"
-    elif (( $(echo "${total_diff} <= 15" | bc -l) )); then
+    elif [ "${is_fair}" -eq 1 ]; then
         print_warning "⚠️  Traffic measurement has expected network overhead (±15%)"
     else
         print_error "❌ Traffic measurement may be INACCURATE (>${total_diff}%)"
