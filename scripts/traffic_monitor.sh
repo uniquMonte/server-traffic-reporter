@@ -536,10 +536,7 @@ get_traffic_status() {
 
 # Function to send daily report
 send_daily_report() {
-    local daily_bytes=$(get_daily_traffic)
-    local cumulative_bytes=$(get_cumulative_traffic)
-
-    # Get detailed traffic data (rx/tx breakdown)
+    # Get detailed traffic data (rx/tx breakdown) - this is the source of truth
     local daily_detailed=$(get_daily_traffic_detailed)
     local daily_rx=$(echo "${daily_detailed}" | awk '{print $1}')
     local daily_tx=$(echo "${daily_detailed}" | awk '{print $2}')
@@ -547,6 +544,32 @@ send_daily_report() {
     local cumulative_detailed=$(get_cumulative_traffic_detailed)
     local cumulative_rx=$(echo "${cumulative_detailed}" | awk '{print $1}')
     local cumulative_tx=$(echo "${cumulative_detailed}" | awk '{print $2}')
+
+    # Calculate total based on TRAFFIC_DIRECTION for consistency
+    local daily_bytes=0
+    local cumulative_bytes=0
+    case "${TRAFFIC_DIRECTION:-1}" in
+        1)
+            # Bidirectional (both directions)
+            daily_bytes=$((daily_rx + daily_tx))
+            cumulative_bytes=$((cumulative_rx + cumulative_tx))
+            ;;
+        2)
+            # Outbound only (upload/tx)
+            daily_bytes=${daily_tx}
+            cumulative_bytes=${cumulative_tx}
+            ;;
+        3)
+            # Inbound only (download/rx)
+            daily_bytes=${daily_rx}
+            cumulative_bytes=${cumulative_rx}
+            ;;
+        *)
+            # Default to bidirectional
+            daily_bytes=$((daily_rx + daily_tx))
+            cumulative_bytes=$((cumulative_rx + cumulative_tx))
+            ;;
+    esac
 
     # Convert to GB
     local daily_gb=$(bytes_to_gb ${daily_bytes})
