@@ -90,6 +90,7 @@ view_configuration() {
         echo "Report Interval: ${interval_desc}"
         echo "Network Interface: ${NETWORK_INTERFACE:-Not set}"
         echo "Traffic Mode: ${traffic_mode}"
+        echo "Billing Timezone: ${BILLING_TIMEZONE:-UTC}"
         echo ""
 
         if [ -n "${CRON_INSTALLED}" ] && [ "${CRON_INSTALLED}" == "yes" ]; then
@@ -202,6 +203,57 @@ update_configuration() {
         TRAFFIC_DIRECTION=1
     fi
 
+    # Billing Timezone
+    echo ""
+    print_info "Billing cycle timezone (used for traffic reset timing):"
+    echo "  Most VPS providers use UTC for billing cycles"
+    echo ""
+    print_info "Common timezone options:"
+    echo "  1) UTC - Coordinated Universal Time (RECOMMENDED, used by most VPS providers)"
+    echo "  2) America/New_York - US Eastern Time (EST/EDT)"
+    echo "  3) America/Los_Angeles - US Pacific Time (PST/PDT)"
+    echo "  4) America/Chicago - US Central Time (CST/CDT)"
+    echo "  5) Asia/Shanghai - China Standard Time (CST)"
+    echo "  6) Europe/London - UK Time (GMT/BST)"
+    echo "  7) Custom - Enter your own timezone"
+    echo ""
+    read -p "Select timezone (1-7) [${BILLING_TIMEZONE:-1}]: " tz_choice < /dev/tty
+    tz_choice="${tz_choice:-1}"
+
+    case "${tz_choice}" in
+        1)
+            BILLING_TIMEZONE="UTC"
+            ;;
+        2)
+            BILLING_TIMEZONE="America/New_York"
+            ;;
+        3)
+            BILLING_TIMEZONE="America/Los_Angeles"
+            ;;
+        4)
+            BILLING_TIMEZONE="America/Chicago"
+            ;;
+        5)
+            BILLING_TIMEZONE="Asia/Shanghai"
+            ;;
+        6)
+            BILLING_TIMEZONE="Europe/London"
+            ;;
+        7)
+            echo ""
+            print_info "Enter timezone in format: Continent/City (e.g., Asia/Tokyo, Europe/Paris)"
+            read -p "Enter custom timezone: " input < /dev/tty
+            BILLING_TIMEZONE="${input:-UTC}"
+            ;;
+        *)
+            print_warning "Invalid selection, using default (UTC)"
+            BILLING_TIMEZONE="UTC"
+            ;;
+    esac
+
+    print_success "Billing timezone set to: ${BILLING_TIMEZONE}"
+    echo ""
+
     # Save configuration
     cat > "${CONFIG_FILE}" << EOF
 # VPS Traffic Reporter Configuration
@@ -216,6 +268,12 @@ REPORT_INTERVAL=${REPORT_INTERVAL}
 REPORT_TIME="${REPORT_TIME}"
 NETWORK_INTERFACE="${NETWORK_INTERFACE}"
 TRAFFIC_DIRECTION=${TRAFFIC_DIRECTION}
+
+# Billing cycle timezone - used for traffic reset timing
+# Most VPS providers use UTC. Common options:
+#   UTC, America/New_York, America/Los_Angeles, Asia/Shanghai, Europe/London
+BILLING_TIMEZONE="${BILLING_TIMEZONE}"
+
 CRON_INSTALLED="no"
 EOF
 
