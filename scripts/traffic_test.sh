@@ -178,11 +178,15 @@ test_download() {
 
     # Step 3: Download test file
     print_info "Step 3/5: Downloading test file..."
+    echo ""
     local test_file="/tmp/test_download_$(date +%s).tmp"
 
-    if wget -O "${test_file}" "${download_url}" 2>&1 | tee /tmp/wget_output.log | grep -E "saved|downloaded|100%"; then
+    # Download with progress bar
+    if wget --progress=bar:force -O "${test_file}" "${download_url}" 2>&1 | tee /tmp/wget_output.log; then
+        echo ""
         print_success "Download completed"
     else
+        echo ""
         print_error "Download failed"
         rm -f "${test_file}" /tmp/wget_output.log
         read -p "Press Enter to continue..." < /dev/tty
@@ -366,14 +370,16 @@ test_upload() {
 
     # Step 2: Create test file
     print_info "Step 2/6: Creating ${file_size_mb}MB test file..."
+    echo ""
     local test_file="/tmp/test_upload_$(date +%s).dat"
-    dd if=/dev/zero of="${test_file}" bs=1M count=${file_size_mb} 2>&1 | grep -E "copied|bytes"
+    dd if=/dev/zero of="${test_file}" bs=1M count=${file_size_mb} status=progress 2>&1 | tail -1
 
     # Get actual file size
     local file_size_bytes=$(get_file_size_bytes "${test_file}")
     local file_size_gb=$(awk "BEGIN {printf \"%.3f\", ${file_size_bytes}/1073741824}")
     local file_size_human=$(bytes_to_human ${file_size_bytes})
 
+    echo ""
     print_success "Test file created: ${file_size_human}"
     echo ""
 
@@ -385,11 +391,15 @@ test_upload() {
 
     # Step 4: Upload test file
     print_info "Step 4/6: Uploading ${file_size_human} to ${remote}..."
+    echo ""
     local remote_path="${remote}:vps-traffic-test/test_upload_$(date +%Y%m%d_%H%M%S).dat"
 
-    if rclone copy "${test_file}" "${remote_path%/*}" --progress 2>&1 | tee /tmp/rclone_output.log | tail -5; then
+    # Upload with progress display
+    if rclone copy "${test_file}" "${remote_path%/*}" --progress --stats-one-line 2>&1 | tee /tmp/rclone_output.log; then
+        echo ""
         print_success "Upload completed"
     else
+        echo ""
         print_error "Upload failed"
         rm -f "${test_file}" /tmp/rclone_output.log
         read -p "Press Enter to continue..." < /dev/tty
@@ -574,13 +584,17 @@ test_both() {
     echo ""
 
     print_info "Downloading from: ${download_url}"
+    echo ""
     local download_file="/tmp/test_combined_download_$(date +%s).tmp"
 
-    if wget -O "${download_file}" "${download_url}" 2>&1 | grep -E "saved|downloaded|100%"; then
+    # Download with progress bar
+    if wget --progress=bar:force -O "${download_file}" "${download_url}" 2>&1; then
         local dl_size=$(get_file_size_bytes "${download_file}")
         local dl_size_human=$(bytes_to_human ${dl_size})
+        echo ""
         print_success "Download completed: ${dl_size_human}"
     else
+        echo ""
         print_error "Download failed"
         rm -f "${download_file}"
         read -p "Press Enter to continue..." < /dev/tty
@@ -595,19 +609,24 @@ test_both() {
     echo ""
 
     print_info "Creating ${upload_size_mb}MB upload file..."
+    echo ""
     local upload_file="/tmp/test_combined_upload_$(date +%s).dat"
-    dd if=/dev/zero of="${upload_file}" bs=1M count=${upload_size_mb} 2>&1 | grep -E "copied|bytes"
+    dd if=/dev/zero of="${upload_file}" bs=1M count=${upload_size_mb} status=progress 2>&1 | tail -1
 
     local ul_size=$(get_file_size_bytes "${upload_file}")
     local ul_size_human=$(bytes_to_human ${ul_size})
     echo ""
 
     print_info "Uploading ${ul_size_human} to ${remote}..."
+    echo ""
     local remote_path="${remote}:vps-traffic-test/test_combined_$(date +%Y%m%d_%H%M%S).dat"
 
-    if rclone copy "${upload_file}" "${remote_path%/*}" --progress 2>&1 | tail -3; then
+    # Upload with progress display
+    if rclone copy "${upload_file}" "${remote_path%/*}" --progress --stats-one-line 2>&1; then
+        echo ""
         print_success "Upload completed"
     else
+        echo ""
         print_error "Upload failed"
         rm -f "${download_file}" "${upload_file}"
         read -p "Press Enter to continue..." < /dev/tty
