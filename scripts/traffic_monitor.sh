@@ -144,16 +144,18 @@ need_reset() {
     # Extract year-month from last reset date
     local last_reset_month=$(echo "${last_reset_date}" | cut -d'-' -f1,2)
 
-    # Simple logic:
-    # 1. If we already reset on the configured reset day this month, don't reset again
-    # 2. If today < reset day of this month, don't reset
-    # 3. Otherwise, reset
+    # Improved logic to handle manual resets:
+    # 1. If we already reset this month on or after the configured reset day, don't reset again
+    # 2. If today hasn't reached the reset day this month, don't reset
+    # 3. If last reset was in a previous month and we've reached reset day, reset
 
-    # Check 1: Did we already reset on the configured reset day this month?
-    # We compare exact dates, not just months, to allow scheduled resets
-    # even if a manual reset occurred earlier in the same month
-    if [ "${last_reset_date}" == "${reset_date_this_month}" ]; then
-        return 1  # Already reset on the configured reset day this month
+    # Check 1: If last reset was this month and on/after the configured reset day, don't reset
+    if [ "${last_reset_month}" == "${current_month}" ]; then
+        # Last reset was this month
+        # Check if it was on or after the configured reset day
+        if [[ "${last_reset_date}" >= "${reset_date_this_month}" ]]; then
+            return 1  # Already reset this month on/after the configured day
+        fi
     fi
 
     # Check 2: Has the reset day arrived this month?
@@ -161,7 +163,7 @@ need_reset() {
         return 1  # Reset day hasn't arrived yet, no reset needed
     fi
 
-    # If we reach here: it's reset day (or after) and we haven't reset this month yet
+    # If we reach here: reset day has arrived and we haven't reset this month yet
     return 0  # Need reset
 }
 
