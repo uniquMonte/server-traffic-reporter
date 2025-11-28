@@ -721,83 +721,34 @@ test_both() {
 
 # Function to show traffic test menu
 show_traffic_test_menu() {
-    while true; do
-        clear
-        echo "======================================"
-        echo "  🧪 Traffic Accuracy Test"
-        echo "======================================"
-        echo ""
-        print_info "Test traffic monitoring accuracy by:"
-        echo "  - Downloading/uploading files of known sizes"
-        echo "  - Comparing measured vs actual file sizes"
-        echo "  - Accounting for network overhead"
-        echo "  - Sending before/after snapshots to Telegram"
-        echo ""
-        echo "1) 📥 Test Download"
-        echo "2) 📤 Test Upload"
-        echo "3) 📊 Test Both (Download + Upload)"
-        echo "4) ℹ️  Requirements & Info"
-        echo "0) ⬅️  Back to Main Menu"
-        echo ""
-        read -p "Select an option: " choice < /dev/tty
-        echo ""
+    clear
+    echo "======================================"
+    echo "  🧪 Traffic Accuracy Test"
+    echo "======================================"
+    echo ""
+    print_info "This test will measure traffic monitoring accuracy by:"
+    echo "  - Downloading a test file of known size"
+    echo "  - Uploading a test file of known size"
+    echo "  - Comparing measured vs actual file sizes"
+    echo "  - Accounting for network overhead"
+    echo "  - Sending before/after snapshots to Telegram"
+    echo ""
 
-        case "${choice}" in
-            1)
-                test_download
-                ;;
-            2)
-                test_upload
-                ;;
-            3)
-                test_both
-                ;;
-            4)
-                clear
-                echo "======================================"
-                echo "  ℹ️  Requirements & Information"
-                echo "======================================"
-                echo ""
-                echo "📥 Download Test:"
-                echo "  - Default: 100MB from speedtest.tele2.net"
-                echo "  - Or use custom download URL"
-                echo "  - Automatically detects file size"
-                echo "  - Compares traffic to actual file size"
-                echo "  - No additional requirements"
-                echo ""
-                echo "📤 Upload Test:"
-                echo "  - Requires rclone installation & configuration"
-                echo "  - Choose file size (10/50/100/200 MB or custom)"
-                echo "  - Uploads to your configured cloud storage"
-                echo "  - Install: curl https://rclone.org/install.sh | sudo bash"
-                echo "  - Configure: rclone config"
-                echo ""
-                echo "📊 Combined Test:"
-                echo "  - Tests both download and upload"
-                echo "  - Customizable file sizes"
-                echo "  - Comprehensive accuracy assessment"
-                echo ""
-                echo "🎯 Accuracy Standards:"
-                echo "  - ✅ Excellent: ±5% (accounting for TCP/IP overhead)"
-                echo "  - ⚠️  Good: ±10% (acceptable variation)"
-                echo "  - ⚠️  Fair: ±15% (expected network overhead)"
-                echo "  - ❌ Poor: >±15% (may indicate issues)"
-                echo ""
-                echo "💡 Notes:"
-                echo "  - Network overhead is normal (TCP/IP headers, etc.)"
-                echo "  - Actual traffic = File size + Protocol overhead"
-                echo "  - Typical overhead: 5-15% depending on network"
-                echo "  - Tests send Telegram notifications before/after"
-                echo ""
-                read -p "Press Enter to continue..." < /dev/tty
-                ;;
-            0|"")
-                return 0
-                ;;
-            *)
-                print_error "Invalid option. Please try again."
-                sleep 2
-                ;;
-        esac
-    done
+    print_info "Requirements:"
+    echo "  - Download: Uses wget (no additional setup needed)"
+    echo "  - Upload: Requires rclone installation & configuration"
+    echo ""
+
+    print_info "Accuracy Standards:"
+    echo "  - ✅ Excellent: ±5% (accounting for TCP/IP overhead)"
+    echo "  - ⚠️  Good: ±10% (acceptable variation)"
+    echo "  - ⚠️  Fair: ±15% (expected network overhead)"
+    echo "  - ❌ Poor: >±15% (may indicate issues)"
+    echo ""
+
+    read -p "Press Enter to start the test, or Ctrl+C to cancel..." < /dev/tty
+    echo ""
+
+    # Run the combined test
+    test_both
 }
