@@ -529,9 +529,11 @@ test_both() {
     echo "======================================"
     echo ""
 
+    print_info "Checking rclone installation..."
     # Check rclone first
     check_rclone
     local rclone_status=$?
+    echo "DEBUG: rclone_status = $rclone_status" >&2
 
     if [ $rclone_status -ne 0 ]; then
         print_error "rclone is required for upload test!"
