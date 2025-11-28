@@ -395,8 +395,8 @@ test_upload() {
     echo ""
     local remote_path="${remote}:vps-traffic-test/test_upload_$(date +%Y%m%d_%H%M%S).dat"
 
-    # Upload with progress display
-    if rclone copy "${test_file}" "${remote_path%/*}" --progress --stats-one-line 2>&1 | tee /tmp/rclone_output.log; then
+    # Upload with cleaner progress display
+    if rclone copy "${test_file}" "${remote_path%/*}" --progress --stats 2s 2>&1 | tee /tmp/rclone_output.log | grep -E "Transferred:|ETA|100%|Errors:"; then
         echo ""
         print_success "Upload completed"
     else
@@ -618,8 +618,8 @@ test_both() {
     echo ""
     local remote_path="${remote}:vps-traffic-test/test_combined_$(date +%Y%m%d_%H%M%S).dat"
 
-    # Upload with progress display
-    if rclone copy "${upload_file}" "${remote_path%/*}" --progress --stats-one-line 2>&1; then
+    # Upload with cleaner progress display
+    if rclone copy "${upload_file}" "${remote_path%/*}" --progress --stats 2s 2>&1 | grep -E "Transferred:|ETA|100%|Errors:"; then
         echo ""
         print_success "Upload completed"
     else
