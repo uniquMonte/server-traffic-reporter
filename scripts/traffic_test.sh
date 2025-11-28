@@ -499,7 +499,7 @@ test_both() {
     print_info "This test will download and upload files to test bidirectional traffic."
     echo ""
 
-    read -p "Continue? (Y/n): " confirm < /dev/tty
+    read -p "Continue? (press Enter to continue, or 'n' to cancel): " confirm < /dev/tty
     confirm=${confirm:-Y}
     if [[ "$confirm" =~ ^[Nn]$ ]]; then
         return 0
@@ -735,7 +735,7 @@ show_traffic_test_menu() {
         echo "3) 📊 Test Both (Recommended)"
         echo "0) ⬅️  Back to Main Menu"
         echo ""
-        read -p "Select an option [3]: " choice < /dev/tty
+        read -p "Select an option (press Enter for recommended option 3): " choice < /dev/tty
         choice=${choice:-3}
         echo ""
 
