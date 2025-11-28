@@ -3,6 +3,18 @@
 # Traffic Accuracy Test Module
 # This module provides functions to test traffic monitoring accuracy
 
+# Colors for output (will use parent's if available, otherwise define here)
+if [ -z "$RED" ]; then
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[1;33m'
+    BLUE='\033[0;34m'
+    CYAN='\033[0;36m'
+    MAGENTA='\033[0;35m'
+    BOLD='\033[1m'
+    NC='\033[0m' # No Color
+fi
+
 # Function to get current traffic statistics
 get_current_stats() {
     local interface="$1"
@@ -85,21 +97,23 @@ select_rclone_remote() {
     fi
 
     echo ""
-    echo "Available rclone remotes:"
+    echo -e "${BOLD}${CYAN}======================================"
+    echo -e "  📦 Available Rclone Remotes"
+    echo -e "======================================${NC}"
     echo ""
 
     local i=1
     local remote_array=()
     while IFS= read -r remote; do
-        echo "  ${i}) ${remote}"
+        echo -e "  ${GREEN}${i})${NC} ${BOLD}${remote}${NC}"
         remote_array+=("$remote")
         ((i++))
     done <<< "$remotes"
 
-    echo "  0) Cancel"
+    echo -e "  ${RED}0)${NC} ${BOLD}Cancel${NC}"
     echo ""
 
-    read -p "Select remote: " choice < /dev/tty
+    read -p "$(echo -e ${CYAN}Select remote [1-${#remote_array[@]}]: ${NC})" choice < /dev/tty
 
     if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#remote_array[@]}" ]; then
         echo "${remote_array[$((choice-1))]}"
@@ -196,13 +210,17 @@ test_download() {
     local tx_bytes=$(echo "$diff" | cut -d':' -f5)
 
     echo ""
-    echo "📊 Test Results:"
-    echo "  📁 File Size:  ${file_size_gb} GB (${file_size_human})"
+    echo -e "${BOLD}${BLUE}╔════════════════════════════════════╗"
+    echo -e "║       📊 Test Results              ║"
+    echo -e "╚════════════════════════════════════╝${NC}"
     echo ""
-    echo "  📊 Traffic Measured:"
-    echo "     ⬇️  Download: ${rx_gb} GB"
-    echo "     ⬆️  Upload:   ${tx_gb} GB"
-    echo "     📦 Total:    ${total_gb} GB"
+    echo -e "${BOLD}📁 File Size:${NC}"
+    echo -e "   ${GREEN}${file_size_gb} GB${NC} ${CYAN}(${file_size_human})${NC}"
+    echo ""
+    echo -e "${BOLD}📊 Traffic Measured:${NC}"
+    echo -e "   ⬇️  Download: ${CYAN}${rx_gb} GB${NC}"
+    echo -e "   ⬆️  Upload:   ${CYAN}${tx_gb} GB${NC}"
+    echo -e "   📦 Total:    ${BOLD}${CYAN}${total_gb} GB${NC}"
     echo ""
 
     # Accuracy check - compare download traffic to file size
@@ -211,17 +229,17 @@ test_download() {
         # Calculate absolute difference using awk conditional
         local diff_percent=$(awk "BEGIN {d=100-${accuracy}; printf \"%.1f\", (d<0?-d:d)}")
 
-        echo "  🎯 Download Accuracy Analysis:"
-        echo "     Expected: ${file_size_gb} GB"
-        echo "     Measured: ${rx_gb} GB"
-        echo "     Accuracy: ${accuracy}%"
-        echo "     Diff: ${diff_percent}%"
+        echo -e "${BOLD}🎯 Download Accuracy Analysis:${NC}"
+        echo -e "   Expected:  ${GREEN}${file_size_gb} GB${NC}"
+        echo -e "   Measured:  ${CYAN}${rx_gb} GB${NC}"
+        echo -e "   Accuracy:  ${YELLOW}${accuracy}%${NC}"
+        echo -e "   Diff:      ${MAGENTA}${diff_percent}%${NC}"
         echo ""
 
         # Network overhead explanation
         local overhead_percent=$(awk "BEGIN {printf \"%.1f\", ((${rx_bytes}-${file_size_bytes})/${file_size_bytes})*100}")
-        echo "  📡 Network Overhead: ${overhead_percent}%"
-        echo "     (Includes TCP/IP headers, retransmissions, etc.)"
+        echo -e "${BOLD}📡 Network Overhead:${NC} ${YELLOW}${overhead_percent}%${NC}"
+        echo -e "   ${CYAN}(Includes TCP/IP headers, retransmissions, etc.)${NC}"
         echo ""
 
         # Accuracy assessment - use awk for safer comparison
@@ -230,13 +248,13 @@ test_download() {
         local is_fair=$(awk "BEGIN {print (${diff_percent} <= 15 ? 1 : 0)}")
 
         if [ "${is_accurate}" -eq 1 ]; then
-            print_success "✅ Download measurement is ACCURATE (±5%)"
+            echo -e "${BOLD}${GREEN}✅ Download measurement is ACCURATE (±5%)${NC}"
         elif [ "${is_acceptable}" -eq 1 ]; then
-            print_warning "⚠️  Download measurement is acceptable (±10%)"
+            echo -e "${BOLD}${YELLOW}⚠️  Download measurement is acceptable (±10%)${NC}"
         elif [ "${is_fair}" -eq 1 ]; then
-            print_warning "⚠️  Download measurement has expected network overhead (±15%)"
+            echo -e "${BOLD}${YELLOW}⚠️  Download measurement has expected network overhead (±15%)${NC}"
         else
-            print_error "❌ Download measurement may be INACCURATE (>${diff_percent}%)"
+            echo -e "${BOLD}${RED}❌ Download measurement may be INACCURATE (>${diff_percent}%)${NC}"
         fi
     else
         print_error "Cannot calculate accuracy: file size is 0"
@@ -391,13 +409,17 @@ test_upload() {
     local tx_bytes=$(echo "$diff" | cut -d':' -f5)
 
     echo ""
-    echo "📊 Test Results:"
-    echo "  📁 File Size:  ${file_size_gb} GB (${file_size_human})"
+    echo -e "${BOLD}${BLUE}╔════════════════════════════════════╗"
+    echo -e "║       📊 Test Results              ║"
+    echo -e "╚════════════════════════════════════╝${NC}"
     echo ""
-    echo "  📊 Traffic Measured:"
-    echo "     ⬇️  Download: ${rx_gb} GB"
-    echo "     ⬆️  Upload:   ${tx_gb} GB"
-    echo "     📦 Total:    ${total_gb} GB"
+    echo -e "${BOLD}📁 File Size:${NC}"
+    echo -e "   ${GREEN}${file_size_gb} GB${NC} ${CYAN}(${file_size_human})${NC}"
+    echo ""
+    echo -e "${BOLD}📊 Traffic Measured:${NC}"
+    echo -e "   ⬇️  Download: ${CYAN}${rx_gb} GB${NC}"
+    echo -e "   ⬆️  Upload:   ${CYAN}${tx_gb} GB${NC}"
+    echo -e "   📦 Total:    ${BOLD}${CYAN}${total_gb} GB${NC}"
     echo ""
 
     # Accuracy check - compare upload traffic to file size
@@ -406,17 +428,17 @@ test_upload() {
         # Calculate absolute difference using awk conditional
         local diff_percent=$(awk "BEGIN {d=100-${accuracy}; printf \"%.1f\", (d<0?-d:d)}")
 
-        echo "  🎯 Upload Accuracy Analysis:"
-        echo "     Expected: ${file_size_gb} GB"
-        echo "     Measured: ${tx_gb} GB"
-        echo "     Accuracy: ${accuracy}%"
-        echo "     Diff: ${diff_percent}%"
+        echo -e "${BOLD}🎯 Upload Accuracy Analysis:${NC}"
+        echo -e "   Expected:  ${GREEN}${file_size_gb} GB${NC}"
+        echo -e "   Measured:  ${CYAN}${tx_gb} GB${NC}"
+        echo -e "   Accuracy:  ${YELLOW}${accuracy}%${NC}"
+        echo -e "   Diff:      ${MAGENTA}${diff_percent}%${NC}"
         echo ""
 
         # Network overhead explanation
         local overhead_percent=$(awk "BEGIN {printf \"%.1f\", ((${tx_bytes}-${file_size_bytes})/${file_size_bytes})*100}")
-        echo "  📡 Network Overhead: ${overhead_percent}%"
-        echo "     (Includes TCP/IP headers, retransmissions, etc.)"
+        echo -e "${BOLD}📡 Network Overhead:${NC} ${YELLOW}${overhead_percent}%${NC}"
+        echo -e "   ${CYAN}(Includes TCP/IP headers, retransmissions, etc.)${NC}"
         echo ""
 
         # Accuracy assessment - use awk for safer comparison
@@ -425,13 +447,13 @@ test_upload() {
         local is_fair=$(awk "BEGIN {print (${diff_percent} <= 15 ? 1 : 0)}")
 
         if [ "${is_accurate}" -eq 1 ]; then
-            print_success "✅ Upload measurement is ACCURATE (±5%)"
+            echo -e "${BOLD}${GREEN}✅ Upload measurement is ACCURATE (±5%)${NC}"
         elif [ "${is_acceptable}" -eq 1 ]; then
-            print_warning "⚠️  Upload measurement is acceptable (±10%)"
+            echo -e "${BOLD}${YELLOW}⚠️  Upload measurement is acceptable (±10%)${NC}"
         elif [ "${is_fair}" -eq 1 ]; then
-            print_warning "⚠️  Upload measurement has expected network overhead (±15%)"
+            echo -e "${BOLD}${YELLOW}⚠️  Upload measurement has expected network overhead (±15%)${NC}"
         else
-            print_error "❌ Upload measurement may be INACCURATE (>${diff_percent}%)"
+            echo -e "${BOLD}${RED}❌ Upload measurement may be INACCURATE (>${diff_percent}%)${NC}"
         fi
     else
         print_error "Cannot calculate accuracy: file size is 0"
@@ -614,15 +636,19 @@ test_both() {
     local total_expected_gb=$(awk "BEGIN {printf \"%.3f\", (${dl_size}+${ul_size})/1073741824}")
 
     echo ""
-    echo "📁 File Sizes:"
-    echo "   Downloaded: ${dl_size_gb} GB (${dl_size_human})"
-    echo "   Uploaded:   ${ul_size_gb} GB (${ul_size_human})"
-    echo "   Total:      ${total_expected_gb} GB"
+    echo -e "${BOLD}${BLUE}╔════════════════════════════════════╗"
+    echo -e "║   📊 Combined Test Results         ║"
+    echo -e "╚════════════════════════════════════╝${NC}"
     echo ""
-    echo "📊 Traffic Measured:"
-    echo "   ⬇️  Download: ${rx_gb} GB"
-    echo "   ⬆️  Upload:   ${tx_gb} GB"
-    echo "   📦 Total:    ${total_gb} GB"
+    echo -e "${BOLD}📁 File Sizes:${NC}"
+    echo -e "   Downloaded: ${GREEN}${dl_size_gb} GB${NC} ${CYAN}(${dl_size_human})${NC}"
+    echo -e "   Uploaded:   ${GREEN}${ul_size_gb} GB${NC} ${CYAN}(${ul_size_human})${NC}"
+    echo -e "   Total:      ${BOLD}${GREEN}${total_expected_gb} GB${NC}"
+    echo ""
+    echo -e "${BOLD}📊 Traffic Measured:${NC}"
+    echo -e "   ⬇️  Download: ${CYAN}${rx_gb} GB${NC}"
+    echo -e "   ⬆️  Upload:   ${CYAN}${tx_gb} GB${NC}"
+    echo -e "   📦 Total:    ${BOLD}${CYAN}${total_gb} GB${NC}"
     echo ""
 
     # Accuracy checks
@@ -632,10 +658,10 @@ test_both() {
     local total_measured_bytes=$((rx_bytes + tx_bytes))
     local total_accuracy=$(awk "BEGIN {printf \"%.1f\", (${total_measured_bytes}/${total_expected_bytes})*100}")
 
-    echo "📈 Accuracy Analysis:"
-    echo "   Download: ${dl_accuracy}%"
-    echo "   Upload:   ${ul_accuracy}%"
-    echo "   Total:    ${total_accuracy}%"
+    echo -e "${BOLD}📈 Accuracy Analysis:${NC}"
+    echo -e "   Download: ${YELLOW}${dl_accuracy}%${NC}"
+    echo -e "   Upload:   ${YELLOW}${ul_accuracy}%${NC}"
+    echo -e "   Total:    ${BOLD}${YELLOW}${total_accuracy}%${NC}"
     echo ""
 
     # Overall assessment
@@ -648,13 +674,13 @@ test_both() {
     local is_fair=$(awk "BEGIN {print (${total_diff} <= 15 ? 1 : 0)}")
 
     if [ "${is_accurate}" -eq 1 ]; then
-        print_success "✅ Traffic measurement is ACCURATE (±5%)"
+        echo -e "${BOLD}${GREEN}✅ Traffic measurement is ACCURATE (±5%)${NC}"
     elif [ "${is_acceptable}" -eq 1 ]; then
-        print_warning "⚠️  Traffic measurement is acceptable (±10%)"
+        echo -e "${BOLD}${YELLOW}⚠️  Traffic measurement is acceptable (±10%)${NC}"
     elif [ "${is_fair}" -eq 1 ]; then
-        print_warning "⚠️  Traffic measurement has expected network overhead (±15%)"
+        echo -e "${BOLD}${YELLOW}⚠️  Traffic measurement has expected network overhead (±15%)${NC}"
     else
-        print_error "❌ Traffic measurement may be INACCURATE (>${total_diff}%)"
+        echo -e "${BOLD}${RED}❌ Traffic measurement may be INACCURATE (>${total_diff}%)${NC}"
     fi
     echo ""
 
