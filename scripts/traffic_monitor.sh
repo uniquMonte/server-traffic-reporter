@@ -153,7 +153,8 @@ need_reset() {
     if [ "${last_reset_month}" == "${current_month}" ]; then
         # Last reset was this month
         # Check if it was on or after the configured reset day
-        if [[ "${last_reset_date}" >= "${reset_date_this_month}" ]]; then
+        # Use string comparison: if NOT (last_reset < reset_date), then last_reset >= reset_date
+        if ! [[ "${last_reset_date}" < "${reset_date_this_month}" ]]; then
             return 1  # Already reset this month on/after the configured day
         fi
     fi
