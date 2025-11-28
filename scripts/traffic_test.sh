@@ -529,17 +529,6 @@ test_both() {
     echo "======================================"
     echo ""
 
-    print_info "This test will download and upload files to test bidirectional traffic."
-    echo ""
-
-    read -p "Continue? (press Enter to continue, or 'n' to cancel): " confirm < /dev/tty
-    confirm=${confirm:-Y}
-    if [[ "$confirm" =~ ^[Nn]$ ]]; then
-        return 0
-    fi
-
-    echo ""
-
     # Check rclone first
     check_rclone
     local rclone_status=$?
