@@ -560,10 +560,8 @@ test_both() {
     esac
     echo ""
 
-    # Get upload size
-    echo "Upload file size:"
-    read -p "Enter size in MB [100]: " upload_size_mb < /dev/tty
-    upload_size_mb=${upload_size_mb:-100}
+    # Note: Upload will use the downloaded file (no need to ask for size)
+    print_info "Note: The downloaded file will be used for upload test"
     echo ""
 
     # Send pre-test snapshot
@@ -609,13 +607,11 @@ test_both() {
     echo "======================================"
     echo ""
 
-    print_info "Creating ${upload_size_mb}MB upload file..."
-    echo ""
-    local upload_file="/tmp/test_combined_upload_$(date +%s).dat"
-    dd if=/dev/zero of="${upload_file}" bs=1M count=${upload_size_mb} status=progress 2>&1 | tail -1
-
-    local ul_size=$(get_file_size_bytes "${upload_file}")
-    local ul_size_human=$(bytes_to_human ${ul_size})
+    # Reuse downloaded file for upload test (more efficient and realistic)
+    print_info "Reusing downloaded file for upload test..."
+    local upload_file="${download_file}"
+    local ul_size="${dl_size}"
+    local ul_size_human="${dl_size_human}"
     echo ""
 
     print_info "Uploading ${ul_size_human} to ${remote}..."
@@ -629,7 +625,7 @@ test_both() {
     else
         echo ""
         print_error "Upload failed"
-        rm -f "${download_file}" "${upload_file}"
+        rm -f "${download_file}"
         read -p "Press Enter to continue..." < /dev/tty
         return 1
     fi
@@ -704,8 +700,8 @@ test_both() {
     fi
     echo ""
 
-    # Clean up
-    rm -f "${download_file}" "${upload_file}"
+    # Clean up (download_file and upload_file are the same, so only delete once)
+    rm -f "${download_file}"
 
     # Send post-test snapshot
     print_info "Sending post-test traffic snapshot to Telegram..."
@@ -721,34 +717,43 @@ test_both() {
 
 # Function to show traffic test menu
 show_traffic_test_menu() {
-    clear
-    echo "======================================"
-    echo "  🧪 Traffic Accuracy Test"
-    echo "======================================"
-    echo ""
-    print_info "This test will measure traffic monitoring accuracy by:"
-    echo "  - Downloading a test file of known size"
-    echo "  - Uploading a test file of known size"
-    echo "  - Comparing measured vs actual file sizes"
-    echo "  - Accounting for network overhead"
-    echo "  - Sending before/after snapshots to Telegram"
-    echo ""
+    while true; do
+        clear
+        echo "======================================"
+        echo "  🧪 Traffic Accuracy Test"
+        echo "======================================"
+        echo ""
+        print_info "Test traffic monitoring accuracy by:"
+        echo "  - Downloading/uploading files of known sizes"
+        echo "  - Comparing measured vs actual file sizes"
+        echo "  - Accounting for network overhead"
+        echo "  - Sending before/after snapshots to Telegram"
+        echo ""
+        echo "1) 📥 Test Download Only"
+        echo "2) 📤 Test Upload Only"
+        echo "3) 📊 Test Both (Recommended)"
+        echo "0) ⬅️  Back to Main Menu"
+        echo ""
+        read -p "Select an option: " choice < /dev/tty
+        echo ""
 
-    print_info "Requirements:"
-    echo "  - Download: Uses wget (no additional setup needed)"
-    echo "  - Upload: Requires rclone installation & configuration"
-    echo ""
-
-    print_info "Accuracy Standards:"
-    echo "  - ✅ Excellent: ±5% (accounting for TCP/IP overhead)"
-    echo "  - ⚠️  Good: ±10% (acceptable variation)"
-    echo "  - ⚠️  Fair: ±15% (expected network overhead)"
-    echo "  - ❌ Poor: >±15% (may indicate issues)"
-    echo ""
-
-    read -p "Press Enter to start the test, or Ctrl+C to cancel..." < /dev/tty
-    echo ""
-
-    # Run the combined test
-    test_both
+        case "${choice}" in
+            1)
+                test_download
+                ;;
+            2)
+                test_upload
+                ;;
+            3)
+                test_both
+                ;;
+            0|"")
+                return 0
+                ;;
+            *)
+                print_error "Invalid option. Please try again."
+                sleep 2
+                ;;
+        esac
+    done
 }
