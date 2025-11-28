@@ -563,7 +563,8 @@ show_menu() {
     echo "4) Test notification"
     echo "5) Run traffic report now"
     echo "6) Reset traffic database"
-    echo "7) Uninstall"
+    echo "7) 🧪 Test traffic accuracy"
+    echo "8) Uninstall"
     echo "0) Exit (or just press Enter)"
     echo ""
     read -p "Select an option: " choice < /dev/tty
@@ -646,6 +647,17 @@ main() {
                 reset_database
                 ;;
             7)
+                # Load traffic test module and show menu
+                if [ -f "${SCRIPTS_DIR}/traffic_test.sh" ]; then
+                    source "${SCRIPTS_DIR}/traffic_test.sh"
+                    show_traffic_test_menu
+                else
+                    print_error "Traffic test module not found!"
+                    print_info "Please update to the latest version (option 3)"
+                    sleep 2
+                fi
+                ;;
+            8)
                 uninstall
                 ;;
             0|"")

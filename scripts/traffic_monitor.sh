@@ -144,16 +144,19 @@ need_reset() {
     # Extract year-month from last reset date
     local last_reset_month=$(echo "${last_reset_date}" | cut -d'-' -f1,2)
 
-    # Simple logic:
-    # 1. If we already reset on the configured reset day this month, don't reset again
-    # 2. If today < reset day of this month, don't reset
-    # 3. Otherwise, reset
+    # Improved logic to handle manual resets:
+    # 1. If we already reset this month on or after the configured reset day, don't reset again
+    # 2. If today hasn't reached the reset day this month, don't reset
+    # 3. If last reset was in a previous month and we've reached reset day, reset
 
-    # Check 1: Did we already reset on the configured reset day this month?
-    # We compare exact dates, not just months, to allow scheduled resets
-    # even if a manual reset occurred earlier in the same month
-    if [ "${last_reset_date}" == "${reset_date_this_month}" ]; then
-        return 1  # Already reset on the configured reset day this month
+    # Check 1: If last reset was this month and on/after the configured reset day, don't reset
+    if [ "${last_reset_month}" == "${current_month}" ]; then
+        # Last reset was this month
+        # Check if it was on or after the configured reset day
+        # Use string comparison: if NOT (last_reset < reset_date), then last_reset >= reset_date
+        if ! [[ "${last_reset_date}" < "${reset_date_this_month}" ]]; then
+            return 1  # Already reset this month on/after the configured day
+        fi
     fi
 
     # Check 2: Has the reset day arrived this month?
@@ -161,7 +164,7 @@ need_reset() {
         return 1  # Reset day hasn't arrived yet, no reset needed
     fi
 
-    # If we reach here: it's reset day (or after) and we haven't reset this month yet
+    # If we reach here: reset day has arrived and we haven't reset this month yet
     return 0  # Need reset
 }
 
@@ -536,10 +539,7 @@ get_traffic_status() {
 
 # Function to send daily report
 send_daily_report() {
-    local daily_bytes=$(get_daily_traffic)
-    local cumulative_bytes=$(get_cumulative_traffic)
-
-    # Get detailed traffic data (rx/tx breakdown)
+    # Get detailed traffic data (rx/tx breakdown) - this is the source of truth
     local daily_detailed=$(get_daily_traffic_detailed)
     local daily_rx=$(echo "${daily_detailed}" | awk '{print $1}')
     local daily_tx=$(echo "${daily_detailed}" | awk '{print $2}')
@@ -547,6 +547,32 @@ send_daily_report() {
     local cumulative_detailed=$(get_cumulative_traffic_detailed)
     local cumulative_rx=$(echo "${cumulative_detailed}" | awk '{print $1}')
     local cumulative_tx=$(echo "${cumulative_detailed}" | awk '{print $2}')
+
+    # Calculate total based on TRAFFIC_DIRECTION for consistency
+    local daily_bytes=0
+    local cumulative_bytes=0
+    case "${TRAFFIC_DIRECTION:-1}" in
+        1)
+            # Bidirectional (both directions)
+            daily_bytes=$((daily_rx + daily_tx))
+            cumulative_bytes=$((cumulative_rx + cumulative_tx))
+            ;;
+        2)
+            # Outbound only (upload/tx)
+            daily_bytes=${daily_tx}
+            cumulative_bytes=${cumulative_tx}
+            ;;
+        3)
+            # Inbound only (download/rx)
+            daily_bytes=${daily_rx}
+            cumulative_bytes=${cumulative_rx}
+            ;;
+        *)
+            # Default to bidirectional
+            daily_bytes=$((daily_rx + daily_tx))
+            cumulative_bytes=$((cumulative_rx + cumulative_tx))
+            ;;
+    esac
 
     # Convert to GB
     local daily_gb=$(bytes_to_gb ${daily_bytes})
