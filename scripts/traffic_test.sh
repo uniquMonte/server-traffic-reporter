@@ -141,7 +141,13 @@ configure_rclone() {
     fi
 
     echo ""
+    # Run rclone config with proper terminal input/output
+    # Temporarily restore stdin/stdout to terminal
+    exec 3<&0 4>&1  # Save current stdin/stdout
+    exec < /dev/tty > /dev/tty  # Connect to terminal
     rclone config
+    exec 0<&3 1>&4  # Restore original stdin/stdout
+    exec 3<&- 4>&-  # Close backup file descriptors
 
     # Check if configuration was successful
     local remotes=$(rclone listremotes 2>/dev/null)
